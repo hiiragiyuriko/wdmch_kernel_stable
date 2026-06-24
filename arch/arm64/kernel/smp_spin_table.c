@@ -125,3 +125,58 @@ const struct cpu_operations smp_spin_table_ops = {
 	.cpu_prepare	= smp_spin_table_cpu_prepare,
 	.cpu_boot	= smp_spin_table_cpu_boot,
 };
+
+/*
+ * Realtek RTD129x variant of the spin-table.
+ *
+ * On these SoCs (RTD1295/RTD1296, e.g. the WD My Cloud Home / Monarch board)
+ * the cpu-release-addr does not point at DRAM but at a 32-bit register inside
+ * the SB2 register block (0x9801aa44). The on-chip boot code / U-Boot holds
+ * the secondary cores spinning on that register and polls it as a 32-bit
+ * little-endian word. The generic spin-table writes a 64-bit value through a
+ * cacheable (MT_NORMAL) mapping, which neither matches the register width nor
+ * the device memory type, so the secondaries are never released.
+ *
+ * This variant maps the release address as device memory and writes the
+ * holding-pen entry point as a 32-bit value, matching the behaviour of the
+ * Realtek 4.9 vendor kernel's "rtk-spin-table" enable-method for cold boot.
+ * The holding-pen/pen_release handshake is identical to the generic path, so
+ * cpu_init and cpu_boot are reused as-is.
+ */
+static int rtk_smp_spin_table_cpu_prepare(unsigned int cpu)
+{
+	void __iomem *release_addr;
+	phys_addr_t pa_holding_pen = __pa_symbol(secondary_holding_pen);
+
+	if (!cpu_release_addr[cpu])
+		return -ENODEV;
+
+	if (pa_holding_pen > U32_MAX) {
+		pr_err("CPU %d: holding pen %pa out of 32-bit range for rtk-spin-table\n",
+		       cpu, &pa_holding_pen);
+		return -EINVAL;
+	}
+
+	release_addr = ioremap(cpu_release_addr[cpu], sizeof(u32));
+	if (!release_addr)
+		return -ENOMEM;
+
+	/*
+	 * Write the holding-pen entry as a 32-bit LE word, regardless of the
+	 * native endianness of the kernel, then kick the secondaries.
+	 */
+	writel_relaxed(lower_32_bits(pa_holding_pen), release_addr);
+
+	sev();
+
+	iounmap(release_addr);
+
+	return 0;
+}
+
+const struct cpu_operations rtk_smp_spin_table_ops = {
+	.name		= "rtk-spin-table",
+	.cpu_init	= smp_spin_table_cpu_init,
+	.cpu_prepare	= rtk_smp_spin_table_cpu_prepare,
+	.cpu_boot	= smp_spin_table_cpu_boot,
+};
