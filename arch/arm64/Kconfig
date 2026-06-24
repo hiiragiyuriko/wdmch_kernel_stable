@@ -2318,6 +2318,22 @@ config ARM64_DEBUG_PRIORITY_MASKING
 	  If unsure, say N
 endif # ARM64_PSEUDO_NMI
 
+config ARM64_TEXT_OFFSET
+	hex "Image load offset from start of RAM"
+	default 0x0
+	help
+	  Value written into the "Image load offset" field of the arm64
+	  Image header. Some bootloaders (e.g. the Realtek RTD129x vendor
+	  U-Boot used on WD My Cloud Home / Monarch boards) read this field
+	  to decide where in RAM the kernel is loaded, and expect the fixed
+	  legacy value 0x280000 rather than the mainline default of 0.
+
+	  When this is non-zero the ARM64_IMAGE_FLAG_PHYS_BASE flag is also
+	  cleared in the header so that the bootloader honours this offset
+	  instead of relocating the image to an arbitrary 2 MiB boundary.
+
+	  Leave at 0x0 for normal mainline boot.
+
 config RELOCATABLE
 	bool "Build a relocatable kernel image" if EXPERT
 	select ARCH_HAS_RELR

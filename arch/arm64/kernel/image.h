@@ -49,7 +49,17 @@
 
 #define __HEAD_FLAG_PAGE_SIZE	((PAGE_SHIFT - 10) / 2)
 
+/*
+ * When a fixed CONFIG_ARM64_TEXT_OFFSET is requested, the bootloader is
+ * expected to load the image at "start of RAM + text_offset" verbatim, so the
+ * PHYS_BASE flag (which tells the loader it may relocate the image to any 2 MiB
+ * boundary) must be cleared. Otherwise advertise PHYS_BASE as usual.
+ */
+#if (CONFIG_ARM64_TEXT_OFFSET != 0)
+#define __HEAD_FLAG_PHYS_BASE	0
+#else
 #define __HEAD_FLAG_PHYS_BASE	1
+#endif
 
 #define __HEAD_FLAGS		(__HEAD_FLAG(BE)	| \
 				 __HEAD_FLAG(PAGE_SIZE) | \
