@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-2-Clause)
+/*
+ * Western Digital My Cloud Home (single bay) / "Monarch" board
+ *
+ * Realtek RTD1295 SoC, 1 GiB DDR.
+ *
+ * Bring-up device tree for the mainline RTD1295 support, derived from the
+ * Realtek 4.9 vendor board file (rtd-1295-monarch-1GB.dts). Only the pieces
+ * required for a serial console and an externally loaded initramfs are
+ * described here; further peripherals are added incrementally.
+ *
+ * The vendor U-Boot loads:
+ *   - the kernel Image at physical 0x00280000 (Image text_offset),
+ *   - the ramdisk (rescue.root.sata.cpio.gz_pad.img) at 0x02200000,
+ *   - the dtb at a fixed address.
+ */
+
+/dts-v1/;
+
+#include "rtd1295.dtsi"
+
+/ {
+	compatible = "wd,monarch", "realtek,rtd1295";
+	model = "WD My Cloud Home (RTD1295 Monarch)";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+		/*
+		 * earlycon uses the dw-apb UART0 at 0x98007800 (8250 compatible,
+		 * 32-bit mmio). ignore_loglevel + loglevel=8 raise the debug
+		 * level for bring-up; printk.time=1 keeps boot timestamps in
+		 * dmesg.
+		 */
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200n8 loglevel=8 ignore_loglevel printk.time=1 init=/init";
+
+		/* Ramdisk loaded by U-Boot to 0x02200000, 4 MiB window. */
+		linux,initrd-start = <0x02200000>;
+		linux,initrd-end   = <0x02600000>;
+	};
+
+	/* 1 GiB, boot ROM (below 0x1f000) excluded from usable RAM. */
+	memory@1f000 {
+		device_type = "memory";
+		reg = <0x1f000 0x3ffe1000>;
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
