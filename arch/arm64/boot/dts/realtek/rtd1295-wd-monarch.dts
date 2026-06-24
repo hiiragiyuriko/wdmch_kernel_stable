@@ -49,8 +49,32 @@
 	};
 };
 
+/*
+ * Realtek RTD129x interrupt mux. Demultiplexes the MISC (GIC SPI 40) and ISO
+ * (GIC SPI 41) interrupt groups. The register windows live inside the misc
+ * (0x9801b000) and iso (0x98007000) syscon blocks.
+ */
+&rbus {
+	mux_intc: interrupt-controller@1b000 {
+		compatible = "Realtek,rtk-irq-mux";
+		reg = <0x1b000 0x100>,	/* MISC */
+		      <0x7000 0x100>;	/* ISO */
+		Realtek,mux-nr = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
+		intr-status = <0xc>, <0x0>;
+		intr-en = <0x80>, <0x40>;
+	};
+};
+
 &uart0 {
 	status = "okay";
+	/* ISO mux (group 1), status bit 2 = UART0 (UR0) */
+	interrupt-parent = <&mux_intc>;
+	interrupts = <1 2>;
 };
 
 /*

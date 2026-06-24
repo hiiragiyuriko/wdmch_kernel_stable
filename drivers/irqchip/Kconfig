@@ -823,4 +823,14 @@ config SUNPLUS_SP7021_INTC
 	  chained controller, routing all interrupt source in P-Chip to
 	  the primary controller on C-Chip.
 
+config REALTEK_RTD129X_IRQ_MUX
+	bool "Realtek RTD129x interrupt mux" if COMPILE_TEST
+	default ARCH_REALTEK
+	select IRQ_DOMAIN
+	help
+	  Support for the Realtek RTD1295/RTD1296 MISC/ISO interrupt mux,
+	  which demultiplexes peripheral interrupts (UART, I2C, GPIO, RTC,
+	  ...) onto a small number of GIC SPIs. Required for interrupt-driven
+	  operation of those peripherals (e.g. the ttyS0 console).
+
 endmenu
