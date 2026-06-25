@@ -256,14 +256,18 @@ static void mux_irq_handle(struct irq_desc *desc)
 		en_offset = irq_map_tab[mux_data->index][i];
 		mux_irq = mux_data->irq_offset + i;
 
-		if ((en_offset < IRQ_INMUX && (enable & BIT(en_offset))) ||
-		    en_offset == MISC_INT_RVD) {
+		/*
+		 * Only service sources that are enabled (or that have no enable
+		 * bit, MISC_INT_RVD). Peripherals latch their status register bit
+		 * regardless of whether their mux interrupt is enabled, so a set
+		 * status bit with its enable clear is simply a flag we don't
+		 * handle -- ignore it silently instead of treating it as an error.
+		 */
+		if (en_offset == MISC_INT_RVD ||
+		    (en_offset < IRQ_INMUX && (enable & BIT(en_offset)))) {
 			if (generic_handle_domain_irq(rtk_domain, mux_irq))
-				pr_err("[%s] irq(%u) desc not found (st:0x%08x en:0x%08x)\n",
-				       DEV_NAME, mux_irq, status, enable);
-		} else {
-			pr_err("[%s] irq(%u) should not happen (st:0x%08x en:0x%08x)\n",
-			       DEV_NAME, mux_irq, status, enable);
+				pr_err_ratelimited("[%s] irq(%u) desc not found (st:0x%08x en:0x%08x)\n",
+						   DEV_NAME, mux_irq, status, enable);
 		}
 	}
 

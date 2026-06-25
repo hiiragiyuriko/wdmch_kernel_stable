@@ -527,7 +527,8 @@ static int rtd_gpio_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct gpio_irq_chip *irq_chip;
 	struct rtd_gpio *data;
-	int ret;
+	struct resource *res;
+	int ret, i;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -553,9 +554,32 @@ static int rtd_gpio_probe(struct platform_device *pdev)
 	if (IS_ERR(data->base))
 		return PTR_ERR(data->base);
 
-	data->irq_base = devm_platform_ioremap_resource(pdev, 1);
-	if (IS_ERR(data->irq_base))
-		return PTR_ERR(data->irq_base);
+	/*
+	 * The GPIO interrupt register window can overlap other devices in the
+	 * same syscon block (on the RTD1295 the ISO bank's interrupt registers
+	 * share the window with the reset controller and the UART). Map it
+	 * without an exclusive request so those drivers can coexist.
+	 */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!res)
+		return -EINVAL;
+	data->irq_base = devm_ioremap(dev, res->start, resource_size(res));
+	if (!data->irq_base)
+		return -ENOMEM;
+
+	/*
+	 * Clear any GPIO interrupt status latched by the bootloader before the
+	 * irqchip (and thus the parent mux lines) is enabled, otherwise a stale
+	 * assert/deassert latch keeps the aggregated GPIOA/GPIODA parent
+	 * interrupt asserted and storms the mux. Bit 0 of each status register
+	 * is the write-enable; with it 0, writing 1 to bits 1..31 clears them.
+	 */
+	for (i = 0; i < data->info->num_gpios; i += 31) {
+		writel_relaxed(0xfffffffe,
+			       data->irq_base + rtd_gpio_gpa_offset(data, i));
+		writel_relaxed(0xfffffffe,
+			       data->irq_base + rtd_gpio_gpda_offset(data, i));
+	}
 
 	data->gpio_chip.label = dev_name(dev);
 	data->gpio_chip.base = -1;
