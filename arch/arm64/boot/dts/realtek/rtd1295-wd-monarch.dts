@@ -55,12 +55,11 @@
  * (GIC SPI 41) interrupt groups. The register windows live inside the misc
  * (0x9801b000) and iso (0x98007000) syscon blocks.
  *
- * Kept disabled for now: the driver and plumbing are validated (it correctly
- * delivers e.g. the UART0 line as hwirq 34), but routing the ttyS0 console
- * through it triggers an interrupt storm because the dw-apb UART interrupt is
- * not deasserted by the handler in this path. The console works fine in polled
- * mode, so the mux is enabled together with the first peripheral that needs it
- * (and can be validated against a single, observable interrupt).
+ * The mux now masks all sub-interrupts at probe (the driver clears the
+ * hardware enable registers), so bootloader-enabled sources no longer storm
+ * the chained parent IRQ. It is needed as the interrupt parent for the GPIO
+ * controllers. The ttyS0 console is deliberately *not* routed through it (it
+ * stays in polled mode) to avoid the dw-apb UART interrupt-ack problem.
  */
 &rbus {
 	mux_intc: interrupt-controller@1b000 {
@@ -75,7 +74,7 @@
 			     <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
 		intr-status = <0xc>, <0x0>;
 		intr-en = <0x80>, <0x40>;
-		status = "disabled";
+		status = "okay";
 	};
 };
 

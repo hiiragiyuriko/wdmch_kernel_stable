@@ -371,6 +371,18 @@ static int __init mux_of_init(struct device_node *np, struct device_node *parent
 		md->intr_status = status;
 		md->intr_en = enable;
 
+		/*
+		 * Start fully masked: the bootloader may leave sub-interrupts
+		 * enabled (e.g. the polled UART) with no Linux handler, which
+		 * would storm the chained parent IRQ. Disable every source and
+		 * clear any latched status; consumers re-enable through
+		 * mux_unmask_irq() when they request an interrupt.
+		 */
+		if (md->base) {
+			__raw_writel(0x0, md->base + md->intr_en);
+			__raw_writel(~0x0, md->base + md->intr_status);
+		}
+
 		irq_set_chained_handler_and_data(md->irq, mux_irq_handle, md);
 	}
 
