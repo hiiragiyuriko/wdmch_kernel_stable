@@ -104,6 +104,11 @@ CONFIG_NVMEM=y
 CONFIG_USB_STORAGE=y
 CONFIG_SCSI=y
 CONFIG_BLK_DEV_SD=y
+# SATA: RTD1295 AHCI host + Realtek SATA PHY
+CONFIG_ATA=y
+CONFIG_SATA_HOST=y
+CONFIG_AHCI_RTK=y
+CONFIG_PHY_RTK_RTD_SATA=y
 # trim things we do not need yet to keep the Image small
 # CONFIG_DRM is not set
 # CONFIG_FB is not set

@@ -204,4 +204,70 @@
 			snps,parkmode-disable-hs-quirk;
 		};
 	};
+
+	/*
+	 * SATA: AHCI host + Realtek SATA PHY (single port). The board boots
+	 * from this disk via U-Boot, so the drive is already powered when Linux
+	 * starts; the vendor disk-power GPIO is not wired here.
+	 *
+	 * Resets come from the CRT (cc) embedded reset controller. The reset
+	 * cell is the vendor bank<<8|bit index: SATA_0 = 0x05, SATA_PHY_0 =
+	 * 0x07, SATA_PHY_POW_0 = 0x0a (all in CRT reset bank 0, reg 0x00).
+	 */
+	sata_phy: sata-phy@3ff00 {
+		compatible = "Realtek,rtk-sata-phy";
+		reg = <0x3ff00 0x100>,	/* SATA MDIO */
+		      <0x1a980 0x10>;	/* SB2 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#phy-cells = <1>;
+		status = "okay";
+
+		sata-phy@0 {
+			reg = <0>;
+			resets = <&cc 0x0a>;	/* RSTN_SATA_PHY_POW_0 */
+			reset-names = "rstn_sata_phy_pow_0";
+			spread-spectrum = <0>;
+			tx-driving = <2>;
+			phy-param = <0x00001111>, <0x00005111>, <0x00009111>,
+				    <0x336a0511>, <0x336a4511>, <0x336a8511>,
+				    <0xe0700111>, <0xe05c4111>, <0xe04a8111>,
+				    <0x00150611>, <0x00154611>, <0x00158611>,
+				    <0xc6000a11>, <0xc6004a11>, <0xc6008a11>,
+				    <0x70000211>, <0x70004211>, <0x70008211>,
+				    <0xc6600a11>, <0xc6604a11>, <0xc6608a11>,
+				    <0x20041911>, <0x20045911>, <0x20049911>,
+				    <0x94aa2011>, <0x94aa6011>, <0x94aaa011>,
+				    <0x17171511>, <0x17175511>, <0x17179511>,
+				    <0x07701611>, <0x07705611>, <0x07709611>,
+				    <0x00002a11>, <0x00006a11>, <0x0000aa11>,
+				    <0x27710311>, <0x27684311>, <0x27648311>,
+				    <0x29001011>, <0x29005011>, <0x29009011>,
+				    <0xc0000c11>, <0xc0004c11>, <0xc0008c11>,
+				    <0x00271711>, <0x00275711>, <0x00279711>;
+			tx-driving-tbl = <0x94a72011>, <0x94a76011>, <0x94a7a011>,
+					 <0x487a2111>, <0x487a6111>, <0x487aa111>;
+			rx-sense-tbl = <0x72100911>, <0x72104911>, <0x72108911>,
+				       <0x27750311>, <0x276e4311>, <0x276c8311>;
+		};
+	};
+
+	sata: sata@3f000 {
+		compatible = "realtek,rtd1295-ahci";
+		reg = <0x3f000 0x1000>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cc RTD1295_CRT_CLK_EN_SATA_0>,
+			 <&cc RTD1295_CRT_CLK_EN_SATA_ALIVE_0>;
+		resets = <&cc 0x05>,	/* RSTN_SATA_0 */
+			 <&cc 0x07>;	/* RSTN_SATA_PHY_0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+		sata-port@0 {
+			reg = <0>;
+			phys = <&sata_phy 0>;
+		};
+	};
 };

@@ -231,6 +231,19 @@ config AHCI_CEVA
 
 	  If unsure, say N.
 
+config AHCI_RTK
+	tristate "Realtek RTD129x AHCI SATA support"
+	depends on ARCH_REALTEK || COMPILE_TEST
+	depends on OF
+	select SATA_HOST
+	select GENERIC_PHY
+	help
+	  This option enables support for the AHCI SATA host controller
+	  found on Realtek RTD1295/RTD1296 SoCs (e.g. the WD My Cloud Home /
+	  Monarch board), using the Realtek SATA PHY.
+
+	  If unsure, say N.
+
 config AHCI_MTK
 	tristate "MediaTek AHCI SATA support"
 	depends on ARCH_MEDIATEK || COMPILE_TEST

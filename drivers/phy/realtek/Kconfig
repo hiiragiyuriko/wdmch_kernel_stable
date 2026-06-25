@@ -29,4 +29,14 @@ config PHY_RTK_RTD_USB3PHY
 	  DWC3 USB IP. This driver will do the PHY initialization
 	  of the parameters.
 
+config PHY_RTK_RTD_SATA
+	tristate "Realtek RTD SATA PHY driver"
+	depends on OF
+	select GENERIC_PHY
+	help
+	  Enable this to support the SATA PHY on Realtek RTD129x SoCs
+	  (e.g. the WD My Cloud Home / Monarch board). The driver loads the
+	  per-board PHY parameter tables and powers the SATA PHY on for the
+	  AHCI host controller.
+
 endif # ARCH_REALTEK || COMPILE_TEST
