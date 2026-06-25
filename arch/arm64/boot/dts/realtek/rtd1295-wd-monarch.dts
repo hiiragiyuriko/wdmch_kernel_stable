@@ -163,6 +163,26 @@
 };
 
 /*
+ * ISO GPIO bank (35 lines, gpio base 101). reg[0] = GPIO data registers
+ * (0x98007100), reg[1] = GPIO interrupt registers (0x98007000). reg[1] is
+ * the base of the ISO syscon and overlaps iso_reset@88 and the UART reset
+ * line; the gpio-rtd driver maps it non-exclusively so they coexist.
+ * Interrupts are ISO mux group 1 bits 19 (GPIOA) and 20 (GPIODA).
+ */
+&iso {
+	gpio_iso: gpio@100 {
+		compatible = "realtek,rtd1295-iso-gpio";
+		reg = <0x100 0x100>, <0x0 0x100>;
+		interrupt-parent = <&mux_intc>;
+		interrupts = <1 19>, <1 20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+	};
+};
+
+/*
  * On-SoC gigabit Ethernet (RTL8169-derived MAC + embedded PHY).
  * reg[0] = MAC, reg[1] = ISO syscon (PHY/PLL control). IRQ is a direct GIC
  * SPI (not via the interrupt mux). Clocks/resets come from the ISO clock
