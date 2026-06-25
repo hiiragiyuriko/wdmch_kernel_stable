@@ -53,6 +53,13 @@
  * Realtek RTD129x interrupt mux. Demultiplexes the MISC (GIC SPI 40) and ISO
  * (GIC SPI 41) interrupt groups. The register windows live inside the misc
  * (0x9801b000) and iso (0x98007000) syscon blocks.
+ *
+ * Kept disabled for now: the driver and plumbing are validated (it correctly
+ * delivers e.g. the UART0 line as hwirq 34), but routing the ttyS0 console
+ * through it triggers an interrupt storm because the dw-apb UART interrupt is
+ * not deasserted by the handler in this path. The console works fine in polled
+ * mode, so the mux is enabled together with the first peripheral that needs it
+ * (and can be validated against a single, observable interrupt).
  */
 &rbus {
 	mux_intc: interrupt-controller@1b000 {
@@ -67,14 +74,13 @@
 			     <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
 		intr-status = <0xc>, <0x0>;
 		intr-en = <0x80>, <0x40>;
+		status = "disabled";
 	};
 };
 
 &uart0 {
+	/* Polled mode for now; see mux_intc note above. */
 	status = "okay";
-	/* ISO mux (group 1), status bit 2 = UART0 (UR0) */
-	interrupt-parent = <&mux_intc>;
-	interrupts = <1 2>;
 };
 
 /*
