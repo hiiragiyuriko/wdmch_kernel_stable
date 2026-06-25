@@ -76,13 +76,25 @@ CONFIG_CMDLINE_FORCE=y
 CONFIG_WATCHDOG=y
 # misc useful for bring-up
 CONFIG_GPIOLIB=y
+# RTD129x SoC chip-revision helper (used by the on-SoC GMAC)
+CONFIG_REALTEK_SOC_CHIP=y
+# networking + on-SoC GMAC (RTL8169-derived)
+CONFIG_NET=y
+CONFIG_INET=y
+CONFIG_PACKET=y
+CONFIG_UNIX=y
+CONFIG_NETDEVICES=y
+CONFIG_ETHERNET=y
+CONFIG_NET_VENDOR_REALTEK=y
+CONFIG_R8169SOC=y
+CONFIG_NET_CORE=y
+CONFIG_PHYLIB=y
 # trim things we do not need yet to keep the Image small
 # CONFIG_DRM is not set
 # CONFIG_FB is not set
 # CONFIG_SOUND is not set
 # CONFIG_USB_SUPPORT is not set
 # CONFIG_MMC is not set
-# CONFIG_NETDEVICES is not set
 # CONFIG_WLAN is not set
 # CONFIG_INPUT is not set
 # CONFIG_HID is not set

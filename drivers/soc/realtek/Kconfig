@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config REALTEK_SOC_CHIP
+	bool "Realtek RTD129x chip id/revision helper"
+	depends on ARCH_REALTEK || COMPILE_TEST
+	default ARCH_REALTEK
+	help
+	  Provides get_rtd_chip_id()/get_rtd_chip_revision() used by Realtek
+	  RTD129x SoC drivers (e.g. the on-SoC GMAC) for revision-specific
+	  register initialisation.

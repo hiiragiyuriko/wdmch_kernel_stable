@@ -17,6 +17,7 @@
 
 /dts-v1/;
 
+#include <dt-bindings/clock/rtd1295-clk.h>
 #include "rtd1295.dtsi"
 
 / {
@@ -132,5 +133,29 @@
 		compatible = "realtek,rtd1295-iso-clk";
 		#clock-cells = <1>;
 		#reset-cells = <1>;
+	};
+};
+
+/*
+ * On-SoC gigabit Ethernet (RTL8169-derived MAC + embedded PHY).
+ * reg[0] = MAC, reg[1] = ISO syscon (PHY/PLL control). IRQ is a direct GIC
+ * SPI (not via the interrupt mux). Clocks/resets come from the ISO clock
+ * controller. Monarch uses the on-chip PHY (output-mode 0).
+ */
+&rbus {
+	gmac: ethernet@16000 {
+		compatible = "realtek,rtd1295-gmac";
+		reg = <0x16000 0x1000>,	/* MAC */
+		      <0x7000 0x1000>;	/* ISO syscon */
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&ic RTD1295_ISO_CLK_EN_ETN_SYS>,
+			 <&ic RTD1295_ISO_CLK_EN_ETN_250M>;
+		clock-names = "etn_sys", "etn_250m";
+		/* ISO reset-simple controller (rtd129x.dtsi), bits GMAC=9 GPHY=10 */
+		resets = <&iso_reset RTD1295_ISO_RSTN_GMAC>,
+			 <&iso_reset RTD1295_ISO_RSTN_GPHY>;
+		reset-names = "gmac", "gphy";
+		status = "okay";
 	};
 };

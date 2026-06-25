@@ -6,7 +6,7 @@
 config NET_VENDOR_REALTEK
 	bool "Realtek devices"
 	default y
-	depends on PCI || (PARPORT && X86)
+	depends on PCI || (PARPORT && X86) || ARCH_REALTEK
 	help
 	  If you have a network (Ethernet) card belonging to this class, say Y.
 
@@ -139,5 +139,18 @@ config RTASE
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called rtase. This is recommended.
+
+config R8169SOC
+	tristate "Realtek RTD1295 on-SoC gigabit ethernet support"
+	depends on ARCH_REALTEK || COMPILE_TEST
+	depends on OF
+	select CRC32
+	select PHYLIB
+	help
+	  Say Y here to support the RTL8169-derived gigabit Ethernet MAC
+	  integrated in the Realtek RTD1295/RTD1296 SoCs (e.g. the WD My
+	  Cloud Home / Monarch board), using the on-chip PHY. This is a
+	  platform (memory-mapped) driver, distinct from the PCI R8169
+	  driver. A clean reimplementation for mainline.
 
 endif # NET_VENDOR_REALTEK
