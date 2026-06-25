@@ -158,4 +158,50 @@
 		reset-names = "gmac", "gphy";
 		status = "okay";
 	};
+
+	/*
+	 * USB: the RTD1295 DRD/OTG port, driven in host mode by the mainline
+	 * dwc3-rtk wrapper + dwc3 core + Realtek USB2/USB3 phys. Register layout
+	 * mapped from the vendor rtd-129x-usb.dtsi (DRD group):
+	 *   wrapper   0x98013200, dwc3 core 0x98020000 (IRQ GIC SPI 21),
+	 *   usb2phy   data 0x98028280 / control 0x98013214,
+	 *   usb3phy   0x98013210.
+	 * Clocks/resets are left to the firmware-on state (clk_ignore_unused);
+	 * VBUS for this port is normally controlled by the Realtek USB power
+	 * manager GPIO, not yet ported -- self-powered devices/hubs should still
+	 * enumerate.
+	 */
+	usb2phy: usb-phy@28280 {
+		compatible = "realtek,rtd1295-usb2phy";
+		reg = <0x28280 0x4>,	/* PHY data */
+		      <0x13214 0x4>;	/* PHY control */
+		#phy-cells = <0>;
+	};
+
+	usb3phy: usb-phy@13210 {
+		compatible = "realtek,rtd1295-usb3phy";
+		reg = <0x13210 0x4>;
+		#phy-cells = <0>;
+	};
+
+	usb_drd: usb@13200 {
+		compatible = "realtek,rtd1295-dwc3", "realtek,rtd-dwc3";
+		reg = <0x13200 0x200>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		dwc3@20000 {
+			compatible = "snps,dwc3";
+			reg = <0x20000 0x9000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
+			phys = <&usb2phy>, <&usb3phy>;
+			phy-names = "usb2-phy", "usb3-phy";
+			dr_mode = "host";
+			snps,dis_u2_susphy_quirk;
+			snps,parkmode-disable-ss-quirk;
+			snps,parkmode-disable-hs-quirk;
+		};
+	};
 };
