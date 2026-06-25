@@ -615,6 +615,18 @@ config PWM_ROCKCHIP
 	  Generic PWM framework driver for the PWM controller found on
 	  Rockchip SoCs.
 
+config PWM_RTK
+	tristate "Realtek RTD129x PWM support"
+	depends on ARCH_REALTEK || COMPILE_TEST
+	depends on HAS_IOMEM
+	help
+	  PWM framework driver for the PWM controller found on Realtek
+	  RTD1295/RTD1296 SoCs (e.g. the WD My Cloud Home / Monarch board),
+	  used for the front-panel status LED.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called pwm-rtk.
+
 config PWM_SAMSUNG
 	tristate "Samsung PWM support"
 	depends on PLAT_SAMSUNG || ARCH_S5PV210 || ARCH_EXYNOS || COMPILE_TEST

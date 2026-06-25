@@ -48,6 +48,18 @@
 		device_type = "memory";
 		reg = <0x1f000 0x3ffe1000>;
 	};
+
+	/* Front-panel system LED, driven by PWM channel 3 (~10 kHz). */
+	leds {
+		compatible = "pwm-leds";
+
+		led-sys {
+			label = "sys";
+			pwms = <&pwm 3 100000>;
+			max-brightness = <255>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
 };
 
 /*
@@ -203,6 +215,18 @@
 			 <&iso_reset RTD1295_ISO_RSTN_GPHY>;
 		reset-names = "gmac", "gphy";
 		status = "okay";
+	};
+
+	/*
+	 * PWM controller (4 channels), at 0x980070d0 within the ISO block.
+	 * Channel 3 drives the front-panel system LED. The register window
+	 * overlaps the non-exclusively-mapped ISO GPIO interrupt window, which
+	 * is harmless.
+	 */
+	pwm: pwm@70d0 {
+		compatible = "realtek,rtd1295-pwm";
+		reg = <0x70d0 0xc>;
+		#pwm-cells = <2>;
 	};
 
 	/*
