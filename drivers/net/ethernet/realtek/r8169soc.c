@@ -676,8 +676,12 @@ static void r8169soc_mdio_init(struct rtl8169_private *tp)
 	u32 tmp;
 	int i;
 
-	/* Wait for the PHY interrupt that signals MDIO is ready
-	 * (ISO_UMSK_ISR bit27, set by the PHY, cleared in pll_clock_init).
+	/* Optionally wait for the ETN PHY interrupt latch (ISO_UMSK_ISR bit27),
+	 * which the PHY may raise once its MDIO interface is ready. On this
+	 * hardware the latch frequently never asserts even though MDIO works
+	 * fine immediately afterwards -- the vendor driver hits the same
+	 * timeout and simply carries on -- so treat a timeout as benign and
+	 * only log it at debug level.
 	 */
 	for (i = 0; i < 100; i++) {
 		if (readl(iso + ISO_UMSK_ISR) & BIT(27))
@@ -685,7 +689,7 @@ static void r8169soc_mdio_init(struct rtl8169_private *tp)
 		mdelay(1);
 	}
 	if (i >= 100)
-		netdev_warn(tp->dev, "PHY MDIO-ready timeout\n");
+		netdev_dbg(tp->dev, "PHY MDIO-ready latch not set, continuing\n");
 
 	/* Electrical tuning before bringing the PHY fully up. */
 	r8169soc_phy_iol_tuning(tp);
