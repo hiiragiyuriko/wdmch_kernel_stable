@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config COMMON_CLK_REALTEK
+	bool "Clock driver for Realtek RTD SoCs"
+	depends on ARCH_REALTEK || COMPILE_TEST
+	select RESET_CONTROLLER
+	select MFD_SYSCON
+	help
+	  Common clock framework support for Realtek RTD129x family SoCs.
+
+config CLK_PLL_PSAUD
+	bool
+
+config CLK_PLL_DIF
+	bool
+
+config CLK_PLL_EDP
+	bool
+
+config CLK_PLL_PIXEL
+	bool
+
+config COMMON_CLK_RTD1295
+	bool "RTD1295 Clock Controller"
+	depends on COMMON_CLK_REALTEK
+	default ARCH_REALTEK
+	help
+	  Support for the CRT and ISO clock controllers on the Realtek RTD1295.

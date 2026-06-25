@@ -59,6 +59,18 @@ CONFIG_SERIAL_CORE_CONSOLE=y
 # reset controller for the dw-apb UART reset line
 CONFIG_RESET_CONTROLLER=y
 CONFIG_RESET_SIMPLE=y
+# Realtek RTD1295 clock controllers (CRT + ISO)
+CONFIG_MFD_SYSCON=y
+CONFIG_COMMON_CLK_REALTEK=y
+CONFIG_COMMON_CLK_RTD1295=y
+# The vendor U-Boot supplies its own cmdline (and overwrites /chosen/bootargs),
+# but arm64 has no CMDLINE_EXTEND. Force our own command line during bring-up so
+# that the clk core does not gate the PLLs/clocks left on by firmware
+# (clk_ignore_unused, essential now that the clk controllers are registered but
+# few consumers claim clocks) and the console stays fully verbose. The initramfs
+# is still located via the DT /chosen linux,initrd-* properties.
+CONFIG_CMDLINE="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200n8 init=/init clk_ignore_unused ignore_loglevel printk.time=1"
+CONFIG_CMDLINE_FORCE=y
 # watchdog (rtd1295) - harmless, present in dtsi
 CONFIG_WATCHDOG=y
 # misc useful for bring-up

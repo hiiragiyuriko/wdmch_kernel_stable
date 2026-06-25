@@ -107,3 +107,30 @@
 	enable-method = "rtk-spin-table";
 	cpu-release-addr = <0x0 0x9801aa44>;
 };
+
+/*
+ * Realtek RTD1295 clock controllers. The CRT (cc) and ISO (ic) controllers
+ * live inside the crt (0x98000000) and iso (0x98007000) syscon blocks and
+ * provide the gate/PLL clocks for the SoC peripherals. They each also expose
+ * an embedded reset controller, but peripherals use the existing reset-simple
+ * controllers from rtd129x.dtsi, so these reset providers stay unreferenced.
+ *
+ * realtek,sb2-lock is intentionally omitted: the SB2 hardware semaphore is
+ * only needed to coordinate register access with the (currently idle) audio/
+ * video co-processors.
+ */
+&crt {
+	cc: clock-controller {
+		compatible = "realtek,rtd1295-crt-clk";
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+	};
+};
+
+&iso {
+	ic: clock-controller {
+		compatible = "realtek,rtd1295-iso-clk";
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+	};
+};
