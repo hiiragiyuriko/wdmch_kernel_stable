@@ -81,6 +81,11 @@ CONFIG_RTC_DRV_RTD119X=y
 # misc useful for bring-up
 CONFIG_GPIOLIB=y
 CONFIG_GPIO_RTD=y
+# I2C bus 0 (DesignWare) - reaches the g2227 PMIC at 0x12
+CONFIG_I2C=y
+CONFIG_I2C_CHARDEV=y
+CONFIG_I2C_DESIGNWARE_CORE=y
+CONFIG_I2C_DESIGNWARE_PLATFORM=y
 # RTD129x SoC chip-revision helper (used by the on-SoC GMAC)
 CONFIG_REALTEK_SOC_CHIP=y
 # networking + on-SoC GMAC (RTL8169-derived)

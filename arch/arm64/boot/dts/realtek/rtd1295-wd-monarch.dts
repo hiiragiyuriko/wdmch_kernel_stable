@@ -49,6 +49,18 @@
 		reg = <0x1f000 0x3ffe1000>;
 	};
 
+	/*
+	 * 27 MHz crystal. The ISO I2C controllers are clocked directly from
+	 * this oscillator (the CCU only provides an enable gate with no rate),
+	 * so the DesignWare driver reads the SCL timing source from here.
+	 */
+	osc27m: osc27m {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <27000000>;
+		clock-output-names = "osc27m";
+	};
+
 	/* Front-panel system LED, driven by PWM channel 3 (~10 kHz). */
 	leds {
 		compatible = "pwm-leds";
@@ -227,6 +239,28 @@
 		compatible = "realtek,rtd1295-pwm";
 		reg = <0x70d0 0xc>;
 		#pwm-cells = <2>;
+	};
+
+	/*
+	 * I2C bus 0 (ISO block, 0x98007d00). The RTD1295 I2C controller is a
+	 * Synopsys DesignWare APB I2C, so the mainline i2c-designware driver
+	 * drives it directly. The g2227 PMIC that controls the CPU/GPU/DDR
+	 * rails hangs off this bus at 7-bit address 0x12; U-Boot already talks
+	 * to it here, so the pads and the ISO i2c0 clock gate are left as the
+	 * firmware set them. The functional clock is the 27 MHz crystal; the
+	 * interrupt is ISO mux group 1, bit 8.
+	 */
+	i2c0: i2c@7d00 {
+		compatible = "snps,designware-i2c";
+		reg = <0x7d00 0x100>;
+		interrupt-parent = <&mux_intc>;
+		interrupts = <1 8>;
+		clocks = <&osc27m>;
+		clock-frequency = <100000>;
+		resets = <&iso_reset RTD1295_ISO_RSTN_I2C_0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
 	};
 
 	/*
