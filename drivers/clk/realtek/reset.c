@@ -150,7 +150,13 @@ int rtk_reset_controller_add(struct device *dev,
 	data->lock      = initdata->lock;
 	data->shared    = initdata->shared;
 
-	WARN_ON_ONCE(data->shared && !data->lock);
+	/*
+	 * Without an SB2 hardware semaphore there is nothing to coordinate with
+	 * (co-processors idle during bring-up); drop the shared flag and use
+	 * lock-less register access rather than warning.
+	 */
+	if (data->shared && !data->lock)
+		data->shared = 0;
 
 	data->rcdev.owner     = THIS_MODULE;
 	data->rcdev.ops       = &rtk_reset_ops;

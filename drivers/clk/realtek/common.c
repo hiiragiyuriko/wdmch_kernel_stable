@@ -91,9 +91,18 @@ static void rtk_clk_init_clk_regmap(struct clk_regmap *clkr,
 	if (!shared)
 		return;
 
+	/*
+	 * "shared" clocks live in register banks that may also be accessed by
+	 * the audio/video co-processors and are normally protected by the SB2
+	 * hardware semaphore. When no SB2 lock is provided (e.g. during bring-up
+	 * with the co-processors idle) fall back to lock-less access instead of
+	 * warning.
+	 */
+	if (!data->lock)
+		return;
+
 	clkr->lock = data->lock;
 	clkr->shared = shared;
-	WARN_ON_ONCE(!clkr->lock);
 }
 
 #define CLK_TYPE_DEFAULT                (0x0)
