@@ -142,40 +142,6 @@
 		reg = <0x600 0x34>;
 		clocks = <&cc RTD1295_CRT_CLK_EN_MISC_RTC>;
 	};
-
-	/*
-	 * MISC GPIO bank (101 lines). reg[0] = GPIO data registers (0x9801b100),
-	 * reg[1] = GPIO interrupt registers (0x9801b000). The assert/deassert
-	 * interrupts are MISC mux group 0 bits 19 (GPIOA) and 20 (GPIODA).
-	 */
-	gpio_misc: gpio@100 {
-		compatible = "realtek,rtd1295-misc-gpio";
-		reg = <0x100 0x100>, <0x0 0x100>;
-		interrupt-parent = <&mux_intc>;
-		interrupts = <0 19>, <0 20>;
-		gpio-controller;
-		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-	};
-};
-
-/*
- * ISO GPIO bank (35 lines, gpio_base 101). reg[0] = GPIO data registers
- * (0x98007100), reg[1] = GPIO interrupt registers (0x98007000). Interrupts
- * are ISO mux group 1 bits 19 (GPIOA) and 20 (GPIODA).
- */
-&iso {
-	gpio_iso: gpio@100 {
-		compatible = "realtek,rtd1295-iso-gpio";
-		reg = <0x100 0x100>, <0x0 0x100>;
-		interrupt-parent = <&mux_intc>;
-		interrupts = <1 19>, <1 20>;
-		gpio-controller;
-		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-	};
 };
 
 /*
