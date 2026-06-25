@@ -235,8 +235,7 @@ static void mux_irq_handle(struct irq_desc *desc)
 	struct irq_chip *chip = irq_desc_get_chip(desc);
 	u32 reg_st = mux_data->intr_status;
 	u32 reg_en = mux_data->intr_en;
-	unsigned int status, enable, check_status;
-	static u32 count;
+	u32 status, enable, serviced = 0, stuck;
 	int i;
 
 	chained_irq_enter(chip, desc);
@@ -247,53 +246,48 @@ static void mux_irq_handle(struct irq_desc *desc)
 	spin_unlock(&irq_mux_lock);
 
 	for (i = 0; i < IRQ_INMUX; i++) {
-		unsigned int mux_irq;
 		u8 en_offset;
 
 		if (!(status & BIT(i)))
 			continue;
 
 		en_offset = irq_map_tab[mux_data->index][i];
-		mux_irq = mux_data->irq_offset + i;
 
 		/*
-		 * Only service sources that are enabled (or that have no enable
-		 * bit, MISC_INT_RVD). Peripherals latch their status register bit
-		 * regardless of whether their mux interrupt is enabled, so a set
-		 * status bit with its enable clear is simply a flag we don't
-		 * handle -- ignore it silently instead of treating it as an error.
+		 * Only service a source whose mux enable bit is actually set,
+		 * i.e. one some driver requested. Reserved (RVD) and unused
+		 * (FAIL) table entries, and real peripherals whose status bit
+		 * is latched but whose mux interrupt was never enabled, are
+		 * left untouched: several ISO sources (UART0, the GPHY, a
+		 * couple of reserved bits) sit permanently asserted and would
+		 * otherwise be dispatched on every single parent interrupt.
 		 */
-		if (en_offset == MISC_INT_RVD ||
-		    (en_offset < IRQ_INMUX && (enable & BIT(en_offset)))) {
-			if (generic_handle_domain_irq(rtk_domain, mux_irq))
-				pr_err_ratelimited("[%s] irq(%u) desc not found (st:0x%08x en:0x%08x)\n",
-						   DEV_NAME, mux_irq, status, enable);
-		}
-	}
+		if (en_offset >= IRQ_INMUX || !(enable & BIT(en_offset)))
+			continue;
 
-	spin_lock(&irq_mux_lock);
-	check_status = __raw_readl(mux_data->base + reg_st);
-	spin_unlock(&irq_mux_lock);
+		serviced |= BIT(i);
+		if (generic_handle_domain_irq(rtk_domain, mux_data->irq_offset + i))
+			pr_err_ratelimited("[%s] irq(%u) desc not found (st:0x%08x en:0x%08x)\n",
+					   DEV_NAME, mux_data->irq_offset + i,
+					   status, enable);
+	}
 
 	/*
-	 * If a level source could not be cleared by its own handler the status
-	 * bit stays asserted and we would loop forever; force-ack the lowest
-	 * pending bit as a last resort.
+	 * If a level source we serviced could not be cleared by its own
+	 * handler its status bit stays asserted and we would loop forever;
+	 * force-ack any such bit as a last resort. Only bits we actually
+	 * serviced are considered -- permanently-latched unenabled sources
+	 * must not trip this.
 	 */
-	if (check_status == status) {
-		if (count > 1)
-			pr_err("[%s] (%u) %s irq status did not change, clearing (st:0x%08x en:0x%08x)\n",
-			       DEV_NAME, mux_data->irq,
-			       mux_data->index ? "ISO" : "MISC", status, enable);
-		else
-			count++;
-
-		spin_lock(&irq_mux_lock);
-		__raw_writel(BIT(__ffs(status)), mux_data->base + reg_st);
-		spin_unlock(&irq_mux_lock);
-	} else {
-		count = 0;
+	spin_lock(&irq_mux_lock);
+	stuck = __raw_readl(mux_data->base + reg_st) & serviced;
+	if (stuck) {
+		pr_err_ratelimited("[%s] %s irq stuck, clearing (st:0x%08x en:0x%08x)\n",
+				   DEV_NAME, mux_data->index ? "ISO" : "MISC",
+				   stuck, enable);
+		__raw_writel(stuck, mux_data->base + reg_st);
 	}
+	spin_unlock(&irq_mux_lock);
 
 	chained_irq_exit(chip, desc);
 }
