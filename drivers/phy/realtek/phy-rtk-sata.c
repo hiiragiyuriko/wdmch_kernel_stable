@@ -210,16 +210,16 @@ static int phy_rtk_sata_init(struct phy *phy)
 	writel(desc->index, base + MDIO_CTR1);
 
 	for (i = 0; i < desc->param_size; i++) {
-		dev_info(priv->dev, "phy%d para 0x%x\n", desc->index, desc->param_table[i]);
+		dev_dbg(priv->dev, "phy%d para 0x%x\n", desc->index, desc->param_table[i]);
 		write_mdio_reg(desc->param_table[i], base + MDIO_CTR);
 	}
 	for (i = 0; i < desc->txdrv_size; i++) {
-		dev_info(priv->dev, "phy%d txdrv 0x%x\n", desc->index, desc->txdrv_table[i]);
+		dev_dbg(priv->dev, "phy%d txdrv 0x%x\n", desc->index, desc->txdrv_table[i]);
 		write_mdio_reg(desc->txdrv_table[i], base + MDIO_CTR);
 	}
 
 	for (i = 0; i < desc->rxsense_size; i++) {
-		dev_info(priv->dev, "phy%d rxsense 0x%x\n", desc->index, desc->rxsense_table[i]);
+		dev_dbg(priv->dev, "phy%d rxsense 0x%x\n", desc->index, desc->rxsense_table[i]);
 		write_mdio_reg(desc->rxsense_table[i], base + MDIO_CTR);
 	}
 
@@ -255,7 +255,7 @@ static int phy_rtk_sata_init(struct phy *phy)
 		reg = readl(base + PHY_CLK_EN) | (1 << (desc->index+7));
 		writel(reg, base + PHY_CLK_EN);
 	}
-	dev_info(priv->dev, "init phy%d OK\n", desc->index);
+	dev_dbg(priv->dev, "init phy%d OK\n", desc->index);
 
 	return 0;
 }
@@ -269,14 +269,14 @@ static int phy_rtk_sata_power_on(struct phy *phy)
 	unsigned int reg;
 	int i;
 
-	dev_info(priv->dev, "power on phy%d\n", desc->index);
+	dev_dbg(priv->dev, "power on phy%d\n", desc->index);
 
 	if (desc->index == 0)
 		crtreg = ioremap(0x98000000, 0x1);
 	else
 		crtreg = ioremap(0x98000050, 0x1);
 	reg = readl(crtreg);
-	dev_info(priv->dev, "[KML] crt register = 0x%x\n", reg);
+	dev_dbg(priv->dev, "crt register = 0x%x\n", reg);
 
 	for (i=0; i<PHY_MAX_RST; i++) {
 		if (desc->rsts[i] != NULL)
@@ -285,7 +285,7 @@ static int phy_rtk_sata_power_on(struct phy *phy)
 			break;
 	}
 	reg = readl(crtreg);
-	dev_info(priv->dev, "[KML] crt register = 0x%x, after deassert\n", reg);
+	dev_dbg(priv->dev, "crt register = 0x%x, after deassert\n", reg);
 
 	iounmap(crtreg);
 
@@ -306,7 +306,7 @@ static int phy_rtk_sata_power_off(struct phy *phy)
 	struct phy_rtk_priv *priv = dev_get_drvdata(phy->dev.parent);
 	int i;
 
-	dev_info(priv->dev, "power off phy%d\n", desc->index);
+	dev_dbg(priv->dev, "power off phy%d\n", desc->index);
 
 	for (i=0; i<PHY_MAX_RST; i++) {
 		if (desc->rsts[i] != NULL)
@@ -420,7 +420,7 @@ static int get_phy_parameter(struct device *dev, struct device_node *node,
 			memcpy(table, TX_DRV_TABLE[drv_level], sizeof(*TX_DRV_TABLE));
 		} else if (priv->chip_id == CHIP_ID_RTD1619 ||
 				priv->chip_id == CHIP_ID_RTD1319) {
-			dev_info(dev, "can't find tx table\n");
+			dev_dbg(dev, "can't find tx table\n");
 			drv_level = 0;
 			memcpy(table, TX_DRV_TABLE_THOR[drv_level], sizeof(*TX_DRV_TABLE_THOR));
 		}
@@ -441,7 +441,7 @@ static int get_phy_parameter(struct device *dev, struct device_node *node,
 	if (!table)
 		return -ENOMEM;
 	if (!prop) {
-		dev_info(dev, "can't find rx table\n");
+		dev_dbg(dev, "can't find rx table\n");
 		if ((priv->chip_id & 0xFFF0) == CHIP_ID_RTD129X) {
 			if (priv->chip_revision == RTD_CHIP_A00 ||
 				priv->chip_revision == RTD_CHIP_A01)
@@ -480,7 +480,7 @@ static void phy_rtk_sata_enable(struct phy_rtk_priv *priv)
 	for (i=0; i<PHY_MAX_RST; i++) {
 		if (priv->rsts[i] == NULL)
 			break;
-		pr_info("[KML] sata phy reset assert %d\n", i);
+		pr_debug("sata phy reset assert %d\n", i);
 		reset_control_assert(priv->rsts[i]);
 		reset_control_deassert(priv->rsts[i]);
 	}
@@ -577,7 +577,7 @@ static int phy_rtk_sata_probe(struct platform_device *pdev)
 			if (IS_ERR(rst))
 				break;
 			phy_desc->rsts[i] = rst;
-			pr_info("[KML] sata phy port reset assert %d\n", i);
+			pr_debug("sata phy port reset assert %d\n", i);
 			reset_control_assert(phy_desc->rsts[i]);
 		}
 
@@ -615,9 +615,9 @@ static int phy_rtk_sata_suspend(struct device *dev)
 {
 	struct phy_rtk_priv *priv = dev_get_drvdata(dev);
 
-	dev_info(dev, "enter %s\n", __func__);
+	dev_dbg(dev, "enter %s\n", __func__);
 	phy_rtk_sata_disable(priv);
-	dev_info(dev, "exit %s\n", __func__);
+	dev_dbg(dev, "exit %s\n", __func__);
 	return 0;
 }
 
@@ -626,9 +626,9 @@ static void phy_rtk_sata_shutdown(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct phy_rtk_priv *priv = dev_get_drvdata(dev);
 
-	dev_info(dev, "enter %s\n", __func__);
+	dev_dbg(dev, "enter %s\n", __func__);
 	phy_rtk_sata_disable(priv);
-	dev_info(dev, "exit %s\n", __func__);
+	dev_dbg(dev, "exit %s\n", __func__);
 	return;
 }
 
@@ -636,9 +636,9 @@ static int phy_rtk_sata_resume(struct device *dev)
 {
 	struct phy_rtk_priv *priv = dev_get_drvdata(dev);
 
-	dev_info(dev, "enter %s\n", __func__);
+	dev_dbg(dev, "enter %s\n", __func__);
 	phy_rtk_sata_enable(priv);
-	dev_info(dev, "exit %s\n", __func__);
+	dev_dbg(dev, "exit %s\n", __func__);
 
 	return 0;
 
