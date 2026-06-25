@@ -136,6 +136,15 @@
 	};
 };
 
+/* RTC lives in the misc syscon block (0x9801b600). */
+&misc {
+	rtc: rtc@600 {
+		compatible = "realtek,rtd1295-rtc";
+		reg = <0x600 0x34>;
+		clocks = <&cc RTD1295_CRT_CLK_EN_MISC_RTC>;
+	};
+};
+
 /*
  * On-SoC gigabit Ethernet (RTL8169-derived MAC + embedded PHY).
  * reg[0] = MAC, reg[1] = ISO syscon (PHY/PLL control). IRQ is a direct GIC

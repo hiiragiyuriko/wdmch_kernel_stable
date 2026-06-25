@@ -72,8 +72,12 @@ CONFIG_COMMON_CLK_RTD1295=y
 # is still located via the DT /chosen linux,initrd-* properties.
 CONFIG_CMDLINE="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200n8 init=/init clk_ignore_unused ignore_loglevel printk.time=1"
 CONFIG_CMDLINE_FORCE=y
-# watchdog (rtd1295) - harmless, present in dtsi
+# watchdog (rtd1295) - node already in rtd129x.dtsi
 CONFIG_WATCHDOG=y
+CONFIG_RTD119X_WATCHDOG=y
+# RTC (rtd1295, in the misc syscon)
+CONFIG_RTC_CLASS=y
+CONFIG_RTC_DRV_RTD119X=y
 # misc useful for bring-up
 CONFIG_GPIOLIB=y
 # RTD129x SoC chip-revision helper (used by the on-SoC GMAC)
