@@ -339,6 +339,23 @@ static bool rtl_loop_wait(struct rtl8169_private *tp, u32 reg, u32 mask,
 	return false;
 }
 
+/* Same as rtl_loop_wait() but for byte-wide registers (e.g. ChipCmd at
+ * offset 0x37). A 32-bit read of an unaligned byte register faults on the
+ * arm64 device mapping, so these must use an 8-bit access.
+ */
+static bool rtl_loop_wait_8(struct rtl8169_private *tp, u32 reg, u8 mask,
+			    bool cond, unsigned int d, int n)
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		if (!!(RTL_R8(tp, reg) & mask) == cond)
+			return true;
+		udelay(d);
+	}
+	return false;
+}
+
 /* ------------------------------------------------------------------------- *
  * 3. OCP and embedded-PHY paged-MDIO access (ported from vendor RTD129x)
  * ------------------------------------------------------------------------- */
@@ -793,7 +810,7 @@ static void r8169soc_phy_config(struct rtl8169_private *tp)
 static void rtl_hw_reset(struct rtl8169_private *tp)
 {
 	RTL_W8(tp, ChipCmd, CmdReset);
-	rtl_loop_wait(tp, ChipCmd, CmdReset, false, 100, 100);
+	rtl_loop_wait_8(tp, ChipCmd, CmdReset, false, 100, 100);
 }
 
 static void rtl_rx_close(struct rtl8169_private *tp)
