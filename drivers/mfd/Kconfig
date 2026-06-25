@@ -538,6 +538,16 @@ config MFD_EXYNOS_LPASS
 	  SoCs (e.g. Exynos5433).
 	  Choose Y here only if you build for such Samsung SoC.
 
+config MFD_G2227
+	tristate "GMT G2227 PMIC"
+	depends on I2C && OF
+	select MFD_CORE
+	select REGMAP_I2C
+	help
+	  Enable support for the GMT G2227 I2C PMIC, used on Realtek RTD129x
+	  boards (e.g. the WD My Cloud Home) to supply the SCPU/GPU/DDR rails.
+	  This is the MFD core; enable REGULATOR_G2227 for the regulators.
+
 config MFD_GATEWORKS_GSC
 	tristate "Gateworks System Controller"
 	depends on I2C && OF

@@ -18,6 +18,7 @@
 /dts-v1/;
 
 #include <dt-bindings/clock/rtd1295-clk.h>
+#include <dt-bindings/regulator/gmt,g22xx.h>
 #include "rtd1295.dtsi"
 
 / {
@@ -261,6 +262,97 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		status = "okay";
+
+		/*
+		 * GMT G2227 PMIC. Supplies the SCPU (dc2), GPU (dc3), DDR
+		 * (dc4) and other RTD1295 rails. All rails are marked
+		 * always-on: firmware brings them up and several (vd33, ddr,
+		 * iso, top) are critical, so the regulator core must not gate
+		 * them as "unused". The cpu-supply/OPP wiring for DVFS is added
+		 * in a later step; for now this just registers the regulators.
+		 * Rail constraints mirror the vendor rtd-129x-dvfs-v1p0.dtsi.
+		 */
+		pmic: pmic@12 {
+			compatible = "gmt,g2227";
+			reg = <0x12>;
+
+			regulators {
+				compatible = "gmt,g2227-regulator";
+
+				vd33_supp: dc1 {
+					regulator-name = "vd33";
+					regulator-min-microvolt = <3000000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-boot-on;
+					regulator-always-on;
+					regulator-initial-mode = <G22XX_DC_MODE_FORCE_PWM>;
+				};
+
+				cpu_supp: dc2 {
+					regulator-name = "cpudvs";
+					regulator-min-microvolt = <800000>;
+					regulator-max-microvolt = <1187500>;
+					regulator-boot-on;
+					regulator-always-on;
+					regulator-initial-mode = <G22XX_DC_MODE_AUTO>;
+				};
+
+				gpu_supp: dc3 {
+					regulator-name = "gpudvs";
+					regulator-min-microvolt = <800000>;
+					regulator-max-microvolt = <1187500>;
+					regulator-boot-on;
+					regulator-always-on;
+					regulator-initial-mode = <G22XX_DC_MODE_AUTO>;
+					regulator-ramp-delay = <625>;
+				};
+
+				ddr_supp: dc4 {
+					regulator-name = "ddr";
+					regulator-min-microvolt = <1500000>;
+					regulator-max-microvolt = <1500000>;
+					regulator-boot-on;
+					regulator-always-on;
+					regulator-initial-mode = <G22XX_DC_MODE_AUTO>;
+				};
+
+				iso_supp: dc5 {
+					regulator-name = "iso";
+					regulator-min-microvolt = <800000>;
+					regulator-max-microvolt = <1187500>;
+					regulator-boot-on;
+					regulator-always-on;
+					regulator-initial-mode = <G22XX_DC_MODE_AUTO>;
+				};
+
+				top_supp: dc6 {
+					regulator-name = "top";
+					regulator-min-microvolt = <800000>;
+					regulator-max-microvolt = <1187500>;
+					regulator-boot-on;
+					regulator-always-on;
+					regulator-initial-mode = <G22XX_DC_MODE_AUTO>;
+				};
+
+				vd18_supp: ldo2 {
+					regulator-name = "ldo2";
+					regulator-min-microvolt = <1500000>;
+					regulator-max-microvolt = <1900000>;
+					regulator-boot-on;
+					regulator-always-on;
+					regulator-initial-mode = <G22XX_LDO_MODE_NORMAL>;
+				};
+
+				l2_supp: ldo3 {
+					regulator-name = "ldo3";
+					regulator-min-microvolt = <800000>;
+					regulator-max-microvolt = <1200000>;
+					regulator-boot-on;
+					regulator-always-on;
+					regulator-initial-mode = <G22XX_LDO_MODE_NORMAL>;
+				};
+			};
+		};
 	};
 
 	/*

@@ -430,6 +430,14 @@ config REGULATOR_FAN53555
 	  input voltage supply of 2.5V to 5.5V. The output voltage is
 	  programmed through an I2C interface.
 
+config REGULATOR_G2227
+	tristate "GMT G2227 PMIC regulators"
+	depends on MFD_G2227
+	help
+	  This driver supports the regulators (dc1-dc6, ldo2, ldo3) of the
+	  GMT G2227 PMIC found on Realtek RTD129x boards. dc2/dc3 supply the
+	  SCPU/GPU rails used for DVFS.
+
 config REGULATOR_FAN53880
 	tristate "Fairchild FAN53880 Regulator"
 	depends on I2C && OF
