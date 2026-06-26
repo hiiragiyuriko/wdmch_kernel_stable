@@ -307,8 +307,6 @@ struct rtl8169_private {
 	int			irq;
 	int			cur_speed;
 	int			cur_duplex;
-
-	struct work_struct	reset_work;	/* MAC re-sync on link change */
 };
 
 static inline struct device *tp_to_dev(struct rtl8169_private *tp)
@@ -564,14 +562,12 @@ static void rtl8169_adjust_link(struct net_device *dev)
 	tp->cur_speed = phydev->speed;
 	tp->cur_duplex = phydev->duplex;
 
+	/* The RTL8169 MAC follows the PHY's resolved speed/duplex
+	 * automatically (it samples PHYstatus); nothing extra to poke for
+	 * the embedded-PHY path.  Keep carrier in sync and report.
+	 */
 	netif_carrier_on(dev);
 	phy_print_status(phydev);
-
-	/*
-	 * The embedded GMAC does not auto-follow the PHY speed (PHYstatus
-	 * stays at 10M), so reset the MAC to re-sample the settled link.
-	 */
-	schedule_work(&tp->reset_work);
 }
 
 /* ------------------------------------------------------------------------- *
@@ -1531,7 +1527,6 @@ static int rtl8169_close(struct net_device *dev)
 	struct rtl8169_private *tp = netdev_priv(dev);
 
 	phy_stop(tp->phydev);
-	cancel_work_sync(&tp->reset_work);
 
 	netif_stop_queue(dev);
 	napi_disable(&tp->napi);
@@ -1546,34 +1541,6 @@ static int rtl8169_close(struct net_device *dev)
 	rtl8169_free_rings(tp);
 
 	return 0;
-}
-
-/*
- * Re-sync the MAC to the PHY on a link change. The RTD129x GMAC does not
- * pick up the embedded PHY's negotiated speed/duplex on its own: the MAC's
- * PHYstatus stays at the power-on default (10M), so a 100M/1G link still runs
- * at ~10 Mbit/s. The vendor driver works around this by resetting the MAC on
- * every link change (RTL_FLAG_TASK_RESET_PENDING), which makes it re-sample
- * the now-settled PHY. Do the same from a work item so the heavy reset runs
- * outside the phylib state-machine context.
- */
-static void rtl_reset_work(struct work_struct *work)
-{
-	struct rtl8169_private *tp =
-		container_of(work, struct rtl8169_private, reset_work);
-	struct net_device *dev = tp->dev;
-
-	if (!netif_running(dev))
-		return;
-
-	netif_stop_queue(dev);
-	napi_disable(&tp->napi);
-	rtl8169_hw_reset(tp);
-	rtl8169_tx_clear(tp);
-	rtl8169_init_ring_indexes(tp);
-	napi_enable(&tp->napi);
-	rtl_hw_start(dev);
-	netif_wake_queue(dev);
 }
 
 static void rtl8169_tx_timeout(struct net_device *dev, unsigned int txqueue)
@@ -1818,7 +1785,6 @@ static int r8169soc_probe(struct platform_device *pdev)
 	tp->dev = ndev;
 	tp->pdev = pdev;
 	tp->mac_version = RTL_MAC_VER_42;
-	INIT_WORK(&tp->reset_work, rtl_reset_work);
 	tp->irq_mask = RTL_INTR_MASK;
 	tp->cur_speed = -1;
 	tp->cur_duplex = -1;
