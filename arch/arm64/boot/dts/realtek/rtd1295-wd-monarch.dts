@@ -302,6 +302,34 @@
 	};
 };
 
+/*
+ * The remaining RTD1295 pad-mux banks. Each lives in its own register
+ * window so it is a separate pinctrl-rtd instance:
+ *   SB2  @0x9801a000 (sb2 syscon)  - MISC GPIOs, i2c2-5, SPI, RGMII, TP...
+ *   CR   @0x98012000               - SD/eMMC/NAND/SDIO/PCIe pads
+ *   DISP @0x9804d000               - audio in/out, SPDIF, DMIC pads
+ * They are added for completeness; no consumer wires them yet, so the
+ * driver just registers the mux capability (no register access at probe).
+ */
+&sb2 {
+	pinctrl_sb2: pinctrl@0 {
+		compatible = "realtek,rtd1295-sb2-pinctrl";
+		reg = <0x0 0x97c>;
+	};
+};
+
+&rbus {
+	pinctrl_cr: pinctrl@12000 {
+		compatible = "realtek,rtd1295-cr-pinctrl";
+		reg = <0x12000 0x640>;
+	};
+
+	pinctrl_disp: pinctrl@4d000 {
+		compatible = "realtek,rtd1295-disp-pinctrl";
+		reg = <0x4d000 0x10>;
+	};
+};
+
 /* RTC lives in the misc syscon block (0x9801b600). */
 &misc {
 	rtc: rtc@600 {
