@@ -517,4 +517,13 @@ config LOONGSON2_THERMAL
 	  is higher than the high temperature threshold or lower than the low
 	  temperature threshold, the interrupt will occur.
 
+config REALTEK_THERMAL
+	tristate "Realtek RTD1295 thermal sensor"
+	depends on ARCH_REALTEK || COMPILE_TEST
+	depends on OF
+	help
+	  Support for the on-SoC temperature sensor in the Realtek RTD1295
+	  SCPU wrapper. Used with the device-tree thermal zone and the generic
+	  cpufreq cooling device to throttle the CPU on overheat.
+
 endif

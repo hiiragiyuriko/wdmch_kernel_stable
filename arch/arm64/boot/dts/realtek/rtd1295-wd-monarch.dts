@@ -19,6 +19,7 @@
 
 #include <dt-bindings/clock/rtd1295-clk.h>
 #include <dt-bindings/regulator/gmt,g22xx.h>
+#include <dt-bindings/thermal/thermal.h>
 #include "rtd1295.dtsi"
 
 / {
@@ -123,6 +124,8 @@
 	clocks = <&cc RTD1295_CRT_PLL_SCPU>;
 	operating-points-v2 = <&cpu_opps>;
 	cpu-supply = <&cpu_supp>;
+	/* cpufreq cooling device for the thermal zone (opp-shared: cpu0 master) */
+	#cooling-cells = <2>;
 };
 
 &cpu1 {
@@ -215,6 +218,59 @@
 			opp-hz = /bits/ 64 <1400000000>;
 			opp-microvolt = <1100000>;
 			clock-latency-ns = <150000>;
+		};
+	};
+};
+
+/*
+ * On-SoC thermal sensor (in the SCPU wrapper at 0x9801d150) and the CPU
+ * thermal zone. Two passive trips throttle the CPU through the OPP table via
+ * the cpufreq cooling device; the critical trip triggers an orderly shutdown.
+ * Trip temperatures mirror the vendor rtd-129x-dvfs-v1p0.dtsi.
+ */
+&scpu_wrapper {
+	cpu_tm: thermal-sensor@150 {
+		compatible = "realtek,rtd1295-thermal-sensor";
+		reg = <0x150 0x20>;
+		#thermal-sensor-cells = <0>;
+	};
+};
+
+&{/} {
+	thermal-zones {
+		cpu-thermal {
+			polling-delay-passive = <250>;
+			polling-delay = <1000>;
+			thermal-sensors = <&cpu_tm>;
+
+			trips {
+				cpu_alert0: cpu-alert0 {
+					temperature = <105000>;
+					hysteresis = <3000>;
+					type = "passive";
+				};
+				cpu_alert1: cpu-alert1 {
+					temperature = <115000>;
+					hysteresis = <3000>;
+					type = "passive";
+				};
+				cpu_crit: cpu-crit {
+					temperature = <130000>;
+					hysteresis = <2000>;
+					type = "critical";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&cpu_alert0>;
+					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map1 {
+					trip = <&cpu_alert1>;
+					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
 		};
 	};
 };
