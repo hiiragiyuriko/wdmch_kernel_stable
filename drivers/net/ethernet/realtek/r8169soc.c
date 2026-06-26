@@ -785,24 +785,26 @@ static void r8169soc_mac_mcu_patch(struct rtl8169_private *tp)
 }
 
 /*
- * PHY config for the RTD129x embedded PHY. The vendor enables ALDPS and EEE
- * for power saving, but on this PHY that wrecks throughput and link latency
- * (gigabit link, ~10 Mbit/s, slow link-up). For a NAS we disable both power-
- * saving features; EEE itself is turned off via phylib in connect_phy.
+ * PHY config knobs ported from vendor rtl8168g_2_hw_phy_config() (RTD129x):
+ * keep dis_mcu_clroob set, enable ALDPS and 10M EEE.
  */
 static void r8169soc_phy_config(struct rtl8169_private *tp)
 {
+	/* Avoid WOL fail when ALDPS is enabled. */
 	RTL_W8(tp, MCU, RTL_R8(tp, MCU) | DIS_MCU_CLROOB);
 
-	/* Disable ALDPS (page 0x0a43 reg 0x18 bit2, reg 24 bit2). */
+	/* Enable ALDPS mode (page 0x0a43 reg 0x18): set bit2, clear 12/1/0. */
 	rtl_phy_write(tp, 0x0a43, 0x18,
-		      rtl_phy_read(tp, 0x0a43, 0x18) & ~BIT(2));
-	rtl_phy_write(tp, 0x0a43, 24,
-		      rtl_phy_read(tp, 0x0a43, 24) & ~BIT(2));
+		      (rtl_phy_read(tp, 0x0a43, 0x18) | BIT(2)) &
+		      ~(BIT(12) | BIT(1) | BIT(0)));
 
-	/* Disable the PHY's 10M EEE bit (page 0x0a43 reg 0x19 bit4). */
+	/* Enable EEE for 10Mbps (page 0x0a43 reg 0x19 bit4). */
 	rtl_phy_write(tp, 0x0a43, 0x19,
-		      rtl_phy_read(tp, 0x0a43, 0x19) & ~BIT(4));
+		      rtl_phy_read(tp, 0x0a43, 0x19) | BIT(4));
+
+	/* Enable ALDPS (page 0x0a43 reg 24 bit2), as in vendor probe tail. */
+	rtl_phy_write(tp, 0x0a43, 24,
+		      rtl_phy_read(tp, 0x0a43, 24) | BIT(2));
 }
 
 /* ------------------------------------------------------------------------- *
@@ -1651,16 +1653,6 @@ static int r8169soc_connect_phy(struct rtl8169_private *tp)
 
 	phy_set_max_speed(phydev, SPEED_1000);
 	phy_support_asym_pause(phydev);
-
-	/*
-	 * Disable EEE. The embedded PHY's EEE/LPI handling cripples
-	 * throughput (gigabit link but only ~10 Mbit/s, high latency) because
-	 * the link keeps entering low-power idle between packets. A NAS wants
-	 * sustained throughput, not the power saving, so turn it off cleanly
-	 * via phylib (clears the EEE advertisement so autoneg won't re-enable
-	 * it).
-	 */
-	phy_disable_eee(phydev);
 
 	tp->phydev = phydev;
 	phy_attached_info(phydev);
