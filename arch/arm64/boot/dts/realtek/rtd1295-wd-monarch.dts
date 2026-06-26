@@ -195,6 +195,23 @@
  * Interrupts are ISO mux group 1 bits 19 (GPIOA) and 20 (GPIODA).
  */
 &iso {
+	/*
+	 * ISO pad mux controller. The RTD1295 pin mux/config registers for
+	 * the ISO bank live at 0x98007300..0x98007320; map the start of the
+	 * ISO block (reg 0x0) so the driver's mux offsets (0x310/0x314/0x31c)
+	 * are used verbatim. Non-exclusive of_iomap, so it coexists with the
+	 * other ISO-window consumers.
+	 */
+	pinctrl: pinctrl@0 {
+		compatible = "realtek,rtd1295-iso-pinctrl";
+		reg = <0x0 0x400>;
+
+		i2c0_pins: i2c0-pins {
+			function = "i2c0";
+			groups = "i2c_scl_0", "i2c_sda_0";
+		};
+	};
+
 	gpio_iso: gpio@100 {
 		compatible = "realtek,rtd1295-iso-gpio";
 		reg = <0x100 0x100>, <0x0 0x100>;
@@ -259,6 +276,8 @@
 		clocks = <&osc27m>;
 		clock-frequency = <100000>;
 		resets = <&iso_reset RTD1295_ISO_RSTN_I2C_0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c0_pins>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		status = "okay";
