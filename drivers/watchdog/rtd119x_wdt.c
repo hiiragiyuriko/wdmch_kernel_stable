@@ -8,6 +8,7 @@
 
 #include <linux/bitops.h>
 #include <linux/clk.h>
+#include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -76,12 +77,36 @@ static int rtd119x_wdt_set_timeout(struct watchdog_device *wdev, unsigned int va
 	return 0;
 }
 
+/*
+ * Restart handler. The RTD1295 has no PSCI reset (it boots via spin-table),
+ * so without this the kernel cannot reboot. Arm the watchdog with the
+ * smallest possible overflow and enable it to force a SoC reset.
+ */
+static int rtd119x_wdt_restart(struct watchdog_device *wdev,
+			       unsigned long action, void *data_)
+{
+	struct rtd119x_watchdog_device *data = watchdog_get_drvdata(wdev);
+	u32 val;
+
+	writel(1, data->base + RTD119X_TCWOV);
+	writel_relaxed(RTD119X_TCWTR_WDCLR, data->base + RTD119X_TCWTR);
+
+	val = readl_relaxed(data->base + RTD119X_TCWCR);
+	val &= ~RTD119X_TCWCR_WDEN_MASK;
+	val |= RTD119X_TCWCR_WDEN_ENABLED;
+	writel(val, data->base + RTD119X_TCWCR);
+
+	mdelay(150);
+	return 0;
+}
+
 static const struct watchdog_ops rtd119x_wdt_ops = {
 	.owner = THIS_MODULE,
 	.start		= rtd119x_wdt_start,
 	.stop		= rtd119x_wdt_stop,
 	.ping		= rtd119x_wdt_ping,
 	.set_timeout	= rtd119x_wdt_set_timeout,
+	.restart	= rtd119x_wdt_restart,
 };
 
 static const struct watchdog_info rtd119x_wdt_info = {
