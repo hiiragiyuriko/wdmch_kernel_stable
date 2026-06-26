@@ -637,35 +637,6 @@ static void r8169soc_pll_clock_init(struct rtl8169_private *tp)
 }
 
 /*
- * Embedded FE/GE PHY electrical (IOL) tuning, revision specific.
- * Ported verbatim from vendor r8169soc_phy_iol_tuning() RTD129x cuts.
- * These paged-register writes adjust idac/abiq/ldvbias/vcm to meet IOL.
- */
-static void r8169soc_phy_iol_tuning(struct rtl8169_private *tp)
-{
-	switch (get_rtd_chip_revision()) {
-	case RTD_CHIP_A00:	/* TSMC, cut A */
-	case RTD_CHIP_A01:	/* TSMC, cut B */
-		int_mdio_write(tp, 0x0bc0, 23, 0x0088);	/* idacfine */
-		int_mdio_write(tp, 0x0bc0, 21, 0x0004);	/* abiq */
-		int_mdio_write(tp, 0x0bc0, 22, 0x0777);	/* ldvbias */
-		int_mdio_write(tp, 0x0bd0, 16, 0x0300);	/* iatt */
-		int_mdio_write(tp, 0x0bd0, 17, 0xe8ca);	/* vcm_ref, cf_l */
-		break;
-	case RTD_CHIP_A02:	/* UMC, cut C */
-		int_mdio_write(tp, 0x0bc0, 23, 0x0044);	/* 100M swing */
-		int_mdio_write(tp, 0x0bc0, 21, 0x0046);	/* 100M Tr/Tf */
-		int_mdio_write(tp, 0x0bc0, 22, 0x0744);	/* 10M */
-		int_mdio_write(tp, 0x0bd0, 17, 0x18ca);	/* vcmref, cf_l */
-		int_mdio_write(tp, 0x0bd0, 16, 0x0200);	/* iatt */
-		break;
-	default:
-		/* Newer cuts (B00+) need no IOL override. */
-		break;
-	}
-}
-
-/*
  * Bring the embedded PHY MDIO online and select the embedded-PHY data path.
  * Ported from vendor r8169soc_mdio_init() + rtl_phy_reinit() (RTD129x,
  * OUTPUT_EMBEDDED_PHY).  Must run after r8169soc_pll_clock_init().
@@ -691,8 +662,14 @@ static void r8169soc_mdio_init(struct rtl8169_private *tp)
 	if (i >= 100)
 		netdev_dbg(tp->dev, "PHY MDIO-ready latch not set, continuing\n");
 
-	/* Electrical tuning before bringing the PHY fully up. */
-	r8169soc_phy_iol_tuning(tp);
+	/*
+	 * NOTE: r8169soc_phy_iol_tuning() is NOT called here. Those paged
+	 * 0x0bc0 analog writes (idacfine/abiq/ldvbias) come from the RTD139x
+	 * code path; the RTD1295 (RTD129x) vendor driver does no such PHY
+	 * electrical tuning, and applying the RTD139x values mis-tunes the
+	 * RTD1295 embedded PHY so it only links at 10M. Leave the PHY at its
+	 * self-calibrated defaults.
+	 */
 
 	/* fill fuse_rdy & rg_ext_ini_done (PHY page 0x0a46 reg 20). */
 	rtl_phy_write(tp, 0x0a46, 20,
@@ -1832,8 +1809,8 @@ static int r8169soc_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_phy_disconnect;
 
-	netdev_info(ndev, "RTD1295 GMAC, embedded PHY, MAC %pM, IRQ %d\n",
-		    ndev->dev_addr, tp->irq);
+	netdev_info(ndev, "RTD1295 GMAC, embedded PHY, MAC %pM, IRQ %d, chip rev 0x%x\n",
+		    ndev->dev_addr, tp->irq, get_rtd_chip_revision());
 
 	return 0;
 
