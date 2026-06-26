@@ -1690,15 +1690,55 @@ static int r8169soc_get_clocks_resets(struct rtl8169_private *tp)
 static void r8169soc_get_mac_address(struct rtl8169_private *tp)
 {
 	struct net_device *dev = tp->dev;
+	struct device_node *factory;
+	const char *ethaddr;
 	u8 mac[ETH_ALEN];
+	u32 l, h;
 
+	/* 1. Standard mac-address / local-mac-address on the MAC node. */
 	if (of_get_mac_address(tp->pdev->dev.of_node, mac) == 0) {
 		eth_hw_addr_set(dev, mac);
-	} else {
-		eth_hw_addr_random(dev);
-		netdev_info(dev, "using random MAC address %pM\n",
-			    dev->dev_addr);
+		return;
 	}
+
+	/*
+	 * 2. The Realtek vendor U-Boot does not patch the ethernet node;
+	 *    instead it injects the board's address as an "XX:XX:..." string
+	 *    in the /factory node's "ethaddr" property. Honour that.
+	 */
+	factory = of_find_node_by_path("/factory");
+	if (factory) {
+		if (of_property_read_string(factory, "ethaddr", &ethaddr) == 0 &&
+		    mac_pton(ethaddr, mac) && is_valid_ether_addr(mac)) {
+			eth_hw_addr_set(dev, mac);
+			of_node_put(factory);
+			netdev_info(dev, "using U-Boot /factory MAC %pM\n", mac);
+			return;
+		}
+		of_node_put(factory);
+	}
+
+	/*
+	 * 3. U-Boot may also have left the address programmed in the MAC0/MAC4
+	 *    registers (this is the path the 4.9 vendor driver relied on).
+	 */
+	l = RTL_R32(tp, MAC0);
+	h = RTL_R32(tp, MAC4);
+	mac[0] = l;
+	mac[1] = l >> 8;
+	mac[2] = l >> 16;
+	mac[3] = l >> 24;
+	mac[4] = h;
+	mac[5] = h >> 8;
+	if (is_valid_ether_addr(mac)) {
+		eth_hw_addr_set(dev, mac);
+		netdev_info(dev, "using MAC %pM from MAC0 registers\n", mac);
+		return;
+	}
+
+	/* 4. Last resort. */
+	eth_hw_addr_random(dev);
+	netdev_info(dev, "using random MAC address %pM\n", dev->dev_addr);
 }
 
 static int r8169soc_probe(struct platform_device *pdev)
