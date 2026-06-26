@@ -105,7 +105,16 @@
 };
 
 &uart0 {
-	/* Polled mode for now; see mux_intc note above. */
+	/*
+	 * Interrupt-driven console, replicating the vendor 4.9 path: UART0 is
+	 * ISO interrupt-mux group 1, bit 2. The earlier mux handler bugs (RVD
+	 * always-service, whole-word force-ack) that made this storm are fixed,
+	 * and the 8250_dw driver clears the dw-apb busy-detect interrupt, so the
+	 * console can leave polled mode. (The vendor's extra "interrupts-st-mask"
+	 * property is not needed: the mainline mux maps the status bit itself.)
+	 */
+	interrupt-parent = <&mux_intc>;
+	interrupts = <1 2>;
 	status = "okay";
 };
 
@@ -380,6 +389,18 @@
 			function = "i2c0";
 			groups = "i2c_scl_0", "i2c_sda_0";
 		};
+
+		/*
+		 * Ethernet activity/link LEDs. The MAC drives two LED outputs
+		 * (etn_led_link, etn_led_rxtx) but the pads default to GPIO, so
+		 * only one physical LED lit up. Mux both to the etn_led function
+		 * (matching the vendor etn_led_pins group) so the MAC LEDSEL
+		 * config reaches the front-panel LEDs.
+		 */
+		etn_led_pins: etn-led-pins {
+			function = "etn_led";
+			groups = "etn_led_link", "etn_led_rxtx";
+		};
 	};
 
 	gpio_iso: gpio@100 {
@@ -414,6 +435,8 @@
 		resets = <&iso_reset RTD1295_ISO_RSTN_GMAC>,
 			 <&iso_reset RTD1295_ISO_RSTN_GPHY>;
 		reset-names = "gmac", "gphy";
+		pinctrl-names = "default";
+		pinctrl-0 = <&etn_led_pins>;
 		status = "okay";
 	};
 
