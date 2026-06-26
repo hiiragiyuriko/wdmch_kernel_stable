@@ -785,40 +785,24 @@ static void r8169soc_mac_mcu_patch(struct rtl8169_private *tp)
 }
 
 /*
- * PHY config knobs ported from vendor rtl8168g_2_hw_phy_config() (RTD129x).
- * EEE is disabled separately (r8169soc_eee_disable) after the MAC is started;
- * here we just keep dis_mcu_clroob set and enable ALDPS as the vendor does
- * (ALDPS is link-down power saving and does not affect throughput).
+ * PHY config for the RTD129x embedded PHY. The vendor enables ALDPS and EEE
+ * for power saving, but on this PHY that wrecks throughput and link latency
+ * (gigabit link, ~10 Mbit/s, slow link-up). For a NAS we disable both power-
+ * saving features; EEE itself is turned off via phylib in connect_phy.
  */
 static void r8169soc_phy_config(struct rtl8169_private *tp)
 {
 	RTL_W8(tp, MCU, RTL_R8(tp, MCU) | DIS_MCU_CLROOB);
 
-	/* Enable ALDPS (page 0x0a43 reg 0x18): set bit2, clear 12/1/0. */
+	/* Disable ALDPS (page 0x0a43 reg 0x18 bit2, reg 24 bit2). */
 	rtl_phy_write(tp, 0x0a43, 0x18,
-		      (rtl_phy_read(tp, 0x0a43, 0x18) | BIT(2)) &
-		      ~(BIT(12) | BIT(1) | BIT(0)));
-}
+		      rtl_phy_read(tp, 0x0a43, 0x18) & ~BIT(2));
+	rtl_phy_write(tp, 0x0a43, 24,
+		      rtl_phy_read(tp, 0x0a43, 24) & ~BIT(2));
 
-/*
- * Disable EEE on the embedded PHY (vendor r8169soc_eee_init(tp, false)).
- * The decisive part is the MAC-side EEE / EEE+ mode (OCP 0xe040/0xe080):
- * left enabled, the MAC keeps entering low-power idle between packets and
- * throughput collapses to ~10 Mbit/s on a 100M/1G link. Must run after the
- * MAC is started so a MAC soft-reset cannot undo the OCP writes. The EEE
- * link advertisement (MMD 7.60) is cleared by phy_disable_eee() at connect.
- */
-static void r8169soc_eee_disable(struct rtl8169_private *tp)
-{
-	/* PHY: clear the 10M-EEE bits (page 0x0a43 reg 25). */
-	rtl_phy_write(tp, 0x0a43, 25,
-		      rtl_phy_read(tp, 0x0a43, 25) & ~(BIT(4) | BIT(2)));
-
-	/* MAC: reset EEE to default and clear EEE / EEE+ mode. */
-	rtl_ocp_write(tp, 0xe040, rtl_ocp_read(tp, 0xe040) | BIT(13));
-	rtl_ocp_write(tp, 0xe040, rtl_ocp_read(tp, 0xe040) & ~(BIT(1) | BIT(0)));
-	rtl_ocp_write(tp, 0xe080, rtl_ocp_read(tp, 0xe080) & ~BIT(1));
-	rtl_ocp_write(tp, 0xe08a, 0x003f);
+	/* Disable the PHY's 10M EEE bit (page 0x0a43 reg 0x19 bit4). */
+	rtl_phy_write(tp, 0x0a43, 0x19,
+		      rtl_phy_read(tp, 0x0a43, 0x19) & ~BIT(4));
 }
 
 /* ------------------------------------------------------------------------- *
@@ -983,9 +967,6 @@ static void rtl_hw_start_8168g(struct rtl8169_private *tp)
 	rtl_w0w1_eri(tp, 0x1b0, ERIAR_MASK_0011, 0x0000, 0x1000, ERIAR_EXGMAC);
 
 	rtl_led_set(tp);
-
-	/* Kill EEE/EEE+ (PHY + MAC) - otherwise LPI caps throughput to ~10M. */
-	r8169soc_eee_disable(tp);
 
 	/* Disable ASPM and clock request before further config. */
 	RTL_W8(tp, Config2, RTL_R8(tp, Config2) & ~ClkReqEn);
