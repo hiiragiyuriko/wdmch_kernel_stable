@@ -235,7 +235,7 @@ static void mux_irq_handle(struct irq_desc *desc)
 	struct irq_chip *chip = irq_desc_get_chip(desc);
 	u32 reg_st = mux_data->intr_status;
 	u32 reg_en = mux_data->intr_en;
-	u32 status, enable, serviced = 0, stuck;
+	u32 status, enable;
 	int i;
 
 	chained_irq_enter(chip, desc);
@@ -265,7 +265,6 @@ static void mux_irq_handle(struct irq_desc *desc)
 		if (en_offset >= IRQ_INMUX || !(enable & BIT(en_offset)))
 			continue;
 
-		serviced |= BIT(i);
 		if (generic_handle_domain_irq(rtk_domain, mux_data->irq_offset + i))
 			pr_err_ratelimited("[%s] irq(%u) desc not found (st:0x%08x en:0x%08x)\n",
 					   DEV_NAME, mux_data->irq_offset + i,
@@ -273,22 +272,14 @@ static void mux_irq_handle(struct irq_desc *desc)
 	}
 
 	/*
-	 * If a level source we serviced could not be cleared by its own
-	 * handler its status bit stays asserted and we would loop forever;
-	 * force-ack any such bit as a last resort. Only bits we actually
-	 * serviced are considered -- permanently-latched unenabled sources
-	 * must not trip this.
+	 * The parent GIC SPI is level-triggered and the mux ORs all enabled
+	 * ISO/MISC sources, so a source whose handler has not yet dropped its
+	 * line simply re-enters this handler until it is cleared at the
+	 * source. Active level sources (e.g. the i2c controller stepping
+	 * through TX_EMPTY/RX_FULL during a transfer) are handled this way; we
+	 * deliberately do not force-ack the mux status latch, which is
+	 * write-1-to-clear and a no-op while the source line is still high.
 	 */
-	spin_lock(&irq_mux_lock);
-	stuck = __raw_readl(mux_data->base + reg_st) & serviced;
-	if (stuck) {
-		pr_err_ratelimited("[%s] %s irq stuck, clearing (st:0x%08x en:0x%08x)\n",
-				   DEV_NAME, mux_data->index ? "ISO" : "MISC",
-				   stuck, enable);
-		__raw_writel(stuck, mux_data->base + reg_st);
-	}
-	spin_unlock(&irq_mux_lock);
-
 	chained_irq_exit(chip, desc);
 }
 
