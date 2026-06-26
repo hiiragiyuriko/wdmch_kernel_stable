@@ -112,25 +112,111 @@
  * Secondary CPU bring-up. The RTD1295 vendor firmware/U-Boot parks cores 1-3
  * spinning on a 32-bit release register in the SB2 block (0x9801aa44); release
  * them with the Realtek spin-table variant. Without this only CPU0 comes up.
+ *
+ * All four cores share the SCPU PLL (cc RTD1295_CRT_PLL_SCPU, a settable
+ * clk_pll_div) and the g2227 dc2 rail (cpu_supp), so they form a single
+ * cpufreq policy (opp-shared) driven by cpufreq-dt against cpu_opps.
  */
 &cpu0 {
 	enable-method = "rtk-spin-table";
 	cpu-release-addr = <0x0 0x9801aa44>;
+	clocks = <&cc RTD1295_CRT_PLL_SCPU>;
+	operating-points-v2 = <&cpu_opps>;
+	cpu-supply = <&cpu_supp>;
 };
 
 &cpu1 {
 	enable-method = "rtk-spin-table";
 	cpu-release-addr = <0x0 0x9801aa44>;
+	clocks = <&cc RTD1295_CRT_PLL_SCPU>;
+	operating-points-v2 = <&cpu_opps>;
+	cpu-supply = <&cpu_supp>;
 };
 
 &cpu2 {
 	enable-method = "rtk-spin-table";
 	cpu-release-addr = <0x0 0x9801aa44>;
+	clocks = <&cc RTD1295_CRT_PLL_SCPU>;
+	operating-points-v2 = <&cpu_opps>;
+	cpu-supply = <&cpu_supp>;
 };
 
 &cpu3 {
 	enable-method = "rtk-spin-table";
 	cpu-release-addr = <0x0 0x9801aa44>;
+	clocks = <&cc RTD1295_CRT_PLL_SCPU>;
+	operating-points-v2 = <&cpu_opps>;
+	cpu-supply = <&cpu_supp>;
+};
+
+/*
+ * CPU operating points for DVFS. Frequencies/voltages mirror the vendor
+ * rtd-129x-dvfs-v1p0.dtsi (enabled points only); the SCPU PLL realises each
+ * via PLL freq x post-divider (e.g. 900 MHz = 1800/2, 300 MHz = 1200/4) and
+ * the voltages all fall on g2227 dc2's 12.5 mV grid.
+ */
+&{/} {
+	cpu_opps: opp-table-cpu {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp-300000000 {
+			opp-hz = /bits/ 64 <300000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-500000000 {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-600000000 {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-700000000 {
+			opp-hz = /bits/ 64 <700000000>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-800000000 {
+			opp-hz = /bits/ 64 <800000000>;
+			opp-microvolt = <875000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-900000000 {
+			opp-hz = /bits/ 64 <900000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-1000000000 {
+			opp-hz = /bits/ 64 <1000000000>;
+			opp-microvolt = <925000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-1100000000 {
+			opp-hz = /bits/ 64 <1100000000>;
+			opp-microvolt = <962500>;
+			clock-latency-ns = <150000>;
+		};
+		opp-1200000000 {
+			opp-hz = /bits/ 64 <1200000000>;
+			opp-microvolt = <1012500>;
+			clock-latency-ns = <150000>;
+			opp-suspend;
+		};
+		opp-1300000000 {
+			opp-hz = /bits/ 64 <1300000000>;
+			opp-microvolt = <1062500>;
+			clock-latency-ns = <150000>;
+		};
+		opp-1400000000 {
+			opp-hz = /bits/ 64 <1400000000>;
+			opp-microvolt = <1100000>;
+			clock-latency-ns = <150000>;
+		};
+	};
 };
 
 /*

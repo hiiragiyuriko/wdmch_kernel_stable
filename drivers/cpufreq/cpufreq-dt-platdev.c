@@ -42,6 +42,8 @@ static const struct of_device_id allowlist[] __initconst = {
 	{ .compatible = "marvell,pxa250", },
 	{ .compatible = "marvell,pxa270", },
 
+	{ .compatible = "realtek,rtd1295", },
+
 	{ .compatible = "samsung,exynos3250", },
 	{ .compatible = "samsung,exynos4210", },
 	{ .compatible = "samsung,exynos5250", },
