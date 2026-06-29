@@ -509,12 +509,19 @@
 					regulator-initial-mode = <G22XX_DC_MODE_AUTO>;
 				};
 
+				/*
+				 * GPU (Mali) rail. The GPU is not used on this
+				 * NAS (no Mali driver), so this rail has no
+				 * consumer. Deliberately NOT marked always-on/
+				 * boot-on: the regulator core powers it down as
+				 * an unused supply at boot, saving the GPU
+				 * leakage current. (The GPU clock is left gated
+				 * by firmware and never enabled by Linux.)
+				 */
 				gpu_supp: dc3 {
 					regulator-name = "gpudvs";
 					regulator-min-microvolt = <800000>;
 					regulator-max-microvolt = <1187500>;
-					regulator-boot-on;
-					regulator-always-on;
 					regulator-initial-mode = <G22XX_DC_MODE_AUTO>;
 					regulator-ramp-delay = <625>;
 				};
