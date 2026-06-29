@@ -779,9 +779,12 @@ static void r8169soc_phy_config(struct rtl8169_private *tp)
 	rtl_phy_write(tp, 0x0a43, 0x19,
 		      rtl_phy_read(tp, 0x0a43, 0x19) | BIT(4));
 
-	/* Enable ALDPS (page 0x0a43 reg 24 bit2), as in vendor probe tail. */
-	rtl_phy_write(tp, 0x0a43, 24,
-		      rtl_phy_read(tp, 0x0a43, 24) | BIT(2));
+	/*
+	 * That is the complete vendor rtl8168g_2_hw_phy_config() for RTD129x:
+	 * dis_mcu_clroob + ALDPS + 10M EEE, nothing more. (A previous extra
+	 * write to "reg 24", i.e. the same 0x18 register, was redundant and is
+	 * not done by the vendor.)
+	 */
 }
 
 /* ------------------------------------------------------------------------- *
