@@ -55,6 +55,9 @@ SPEC=$(mktemp)
   done
   echo "file /bin/busybox $BUSYBOX 755 0 0"
   echo "file /init $KDIR/../build/initramfs/root/init 755 0 0"
+  # cross-built static ethtool (for diagnosing the GMAC link speed/duplex)
+  [ -f "$KDIR/../build/ethtool" ] && \
+    echo "file /usr/bin/ethtool $KDIR/../build/ethtool 755 0 0"
   # applet symlinks
   for app in $(qemu-aarch64-static "$BUSYBOX" --list-full); do
     [ "$app" = "bin/busybox" ] && continue
