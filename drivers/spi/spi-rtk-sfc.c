@@ -108,14 +108,80 @@ static void rtk_sfc_disable_auto_write(struct rtk_sfc *sfc)
 	writel(0x006, sfc->regs + SFC_EN_WR);
 }
 
+/*
+ * The flash window only decodes 32-bit accesses; byte/halfword reads return
+ * the first response byte replicated (which is why a naive memcpy_fromio reads
+ * "ef ef ef..."). So all data transfers go through aligned readl()/writel().
+ */
+
+/* Register response (RDID/RDSR/...): presented at the window base as a word. */
+static void rtk_sfc_reg_in(struct rtk_sfc *sfc, u8 *buf, size_t len)
+{
+	(void)readl(sfc->window);		/* prime/trigger */
+
+	while (len) {
+		u32 w = readl(sfc->window);
+		size_t n = min_t(size_t, len, 4);
+		size_t i;
+
+		for (i = 0; i < n; i++)
+			buf[i] = w >> (i * 8);
+		buf += n;
+		len -= n;
+	}
+}
+
+/* Linear flash read from the memory-mapped window, handling unaligned ends. */
+static void rtk_sfc_mem_in(struct rtk_sfc *sfc, u8 *buf, u32 off, size_t len)
+{
+	while (len) {
+		u32 a = off & ~0x3u;
+		u32 sh = (off & 0x3u) * 8;
+		u32 w = readl(sfc->window + a);
+		size_t n = min_t(size_t, len, 4 - (off & 0x3u));
+		size_t i;
+
+		for (i = 0; i < n; i++)
+			buf[i] = w >> (sh + i * 8);
+		buf += n;
+		off += n;
+		len -= n;
+	}
+}
+
+/* Program data into the window; non-written bytes are left as 0xff (no-op). */
+static void rtk_sfc_mem_out(struct rtk_sfc *sfc, const u8 *buf, u32 off,
+			    size_t len)
+{
+	while (len) {
+		u32 a = off & ~0x3u;
+		u32 sh = (off & 0x3u) * 8;
+		size_t n = min_t(size_t, len, 4 - (off & 0x3u));
+		u32 w = 0xffffffff;
+		size_t i;
+
+		for (i = 0; i < n; i++) {
+			u32 b = sh + i * 8;
+
+			w = (w & ~(0xffu << b)) | ((u32)buf[i] << b);
+		}
+		writel(w, sfc->window + a);
+		buf += n;
+		off += n;
+		len -= n;
+	}
+}
+
 /* Poll the flash WIP (write-in-progress) bit via RDSR until clear. */
 static int rtk_sfc_wait_wip(struct rtk_sfc *sfc)
 {
 	int timeout = SFC_WIP_TIMEOUT_US / SFC_WIP_POLL_US;
+	u8 sr;
 
 	while (timeout--) {
 		rtk_sfc_arm(sfc, OP_RDSR, SFC_CTL_REG);
-		if (!(readb(sfc->window) & SR_WIP))
+		rtk_sfc_reg_in(sfc, &sr, 1);
+		if (!(sr & SR_WIP))
 			return 0;
 		udelay(SFC_WIP_POLL_US);
 	}
@@ -153,12 +219,11 @@ static int rtk_sfc_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 	} else if (op->addr.nbytes == 0 && op->data.dir == SPI_MEM_DATA_IN) {
 		/* register read: RDID/RDSR */
 		rtk_sfc_arm(sfc, opcode, SFC_CTL_REG);
-		(void)readl(sfc->window);
-		memcpy_fromio(op->data.buf.in, sfc->window, op->data.nbytes);
+		rtk_sfc_reg_in(sfc, op->data.buf.in, op->data.nbytes);
 	} else if (op->addr.nbytes == 0 && op->data.dir == SPI_MEM_DATA_OUT) {
 		/* register write: WRSR */
 		rtk_sfc_arm(sfc, opcode, SFC_CTL_REG);
-		memcpy_toio(sfc->window, op->data.buf.out, op->data.nbytes);
+		rtk_sfc_mem_out(sfc, op->data.buf.out, 0, op->data.nbytes);
 	} else if (op->addr.nbytes && op->data.dir == SPI_MEM_NO_DATA) {
 		/* sector erase: address carried via the window offset */
 		rtk_sfc_arm(sfc, opcode, SFC_CTL_ADDR);
@@ -167,14 +232,12 @@ static int rtk_sfc_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 	} else if (op->addr.nbytes && op->data.dir == SPI_MEM_DATA_IN) {
 		/* memory read (single-lane, opcode 0x03) */
 		rtk_sfc_read_mode(sfc);
-		memcpy_fromio(op->data.buf.in, sfc->window + addr,
-			      op->data.nbytes);
+		rtk_sfc_mem_in(sfc, op->data.buf.in, addr, op->data.nbytes);
 	} else if (op->addr.nbytes && op->data.dir == SPI_MEM_DATA_OUT) {
 		/* page program */
 		rtk_sfc_enable_auto_write(sfc);
 		rtk_sfc_arm(sfc, opcode, SFC_CTL_MEM);
-		memcpy_toio(sfc->window + addr, op->data.buf.out,
-			    op->data.nbytes);
+		rtk_sfc_mem_out(sfc, op->data.buf.out, addr, op->data.nbytes);
 		rtk_sfc_read_mode(sfc);
 		rtk_sfc_disable_auto_write(sfc);
 		ret = rtk_sfc_wait_wip(sfc);
