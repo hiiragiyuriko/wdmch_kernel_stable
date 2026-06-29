@@ -14,7 +14,7 @@ CONFIG_RD_GZIP=y
 # CONFIG_RD_XZ is not set
 # CONFIG_RD_LZO is not set
 # CONFIG_RD_LZ4 is not set
-# CONFIG_RD_ZSTD is not set
+CONFIG_RD_ZSTD=y
 CONFIG_EXPERT=y
 CONFIG_PERF_EVENTS=y
 CONFIG_ARCH_REALTEK=y
@@ -170,3 +170,14 @@ CONFIG_LEDS_CLASS=y
 CONFIG_LEDS_PWM=y
 CONFIG_LEDS_TRIGGERS=y
 CONFIG_LEDS_TRIGGER_HEARTBEAT=y
+# loadable module support (modules installed to ../modules)
+CONFIG_MODULES=y
+CONFIG_MODULE_UNLOAD=y
+# WireGuard VPN (module: modprobe wireguard)
+CONFIG_WIREGUARD=m
+# TCP BBR congestion control + its companion fq qdisc
+# (modules: modprobe tcp_bbr sch_fq, then sysctl net.ipv4.tcp_congestion_control=bbr)
+CONFIG_NET_SCHED=y
+CONFIG_NET_SCH_FQ=m
+CONFIG_TCP_CONG_ADVANCED=y
+CONFIG_TCP_CONG_BBR=m
