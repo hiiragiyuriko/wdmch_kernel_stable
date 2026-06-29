@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config REALTEK_RTD1295_PD
+	bool "Realtek RTD1295 power-domain controller"
+	depends on (ARCH_REALTEK || COMPILE_TEST) && PM
+	select PM_GENERIC_DOMAINS
+	select MFD_SYSCON
+	default ARCH_REALTEK
+	help
+	  Power-domain (genpd) controller for the Realtek RTD1295 SoC. It
+	  gates the video engines, the Mali GPU and the NAT accelerator using
+	  the SoC's isolation/SRAM power islands, and lets the genpd core power
+	  down the blocks that have no driver attached. Say Y to save power on
+	  RTD1295 boards that do not use those blocks (e.g. NAS products).

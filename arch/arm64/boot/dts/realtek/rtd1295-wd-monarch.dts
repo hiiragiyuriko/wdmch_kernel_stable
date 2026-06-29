@@ -301,6 +301,19 @@
 		#clock-cells = <1>;
 		#reset-cells = <1>;
 	};
+
+	/*
+	 * Power-domain controller for the video engines, Mali GPU and NAT
+	 * accelerator. None of those blocks has a driver on this NAS, so the
+	 * genpd core powers the (unused) domains down at boot, isolating each
+	 * island before cutting its SRAM power. This is the safe way to shed
+	 * the GPU/VE leakage; cutting the external GPU rail (g2227 dc3)
+	 * directly instead hangs the SoC interconnect.
+	 */
+	pd: power-controller {
+		compatible = "realtek,rtd1295-power";
+		#power-domain-cells = <1>;
+	};
 };
 
 &iso {
