@@ -96,6 +96,11 @@ CONFIG_REGULATOR=y
 CONFIG_REGULATOR_G2227=y
 # Power domains: power down unused VE/GPU/NAT blocks at boot (saves leakage)
 CONFIG_REALTEK_RTD1295_PD=y
+# Boot SPI-NOR: SFC controller + spi-nor core, exposed as an MTD device
+CONFIG_MTD=y
+CONFIG_MTD_SPI_NOR=y
+CONFIG_SPI=y
+CONFIG_SPI_RTK_SFC=y
 # CPU DVFS: SCPU PLL (settable) + cpu_opps + g2227 dc2, via cpufreq-dt
 CONFIG_CPU_FREQ=y
 CONFIG_CPU_FREQ_STAT=y

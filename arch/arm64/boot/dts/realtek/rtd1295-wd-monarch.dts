@@ -325,6 +325,28 @@
 };
 
 /*
+ * Serial Flash Controller for the boot SPI-NOR (holds U-Boot / BL31). Exposed
+ * as an spi-mem controller so the generic spi-nor core drives the chip; the
+ * flash shows up as an MTD device (e.g. to read the U-Boot environment). The
+ * controller drives the flash through a memory-mapped window, so writes to the
+ * boot flash are possible - treat the MTD device with care.
+ */
+&rbus {
+	sfc: spi@1a800 {
+		compatible = "realtek,rtd1295-sfc";
+		reg = <0x1a800 0x50>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		flash@0 {
+			compatible = "jedec,spi-nor";
+			reg = <0>;
+			spi-max-frequency = <50000000>;
+		};
+	};
+};
+
+/*
  * The remaining RTD1295 pad-mux banks. Each lives in its own register
  * window so it is a separate pinctrl-rtd instance:
  *   SB2  @0x9801a000 (sb2 syscon)  - MISC GPIOs, i2c2-5, SPI, RGMII, TP...
