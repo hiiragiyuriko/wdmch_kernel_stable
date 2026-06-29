@@ -77,6 +77,14 @@ enum rtl_registers {
 	TxConfig		= 0x40,
 #define TXCFG_AUTO_FIFO		BIT(7)
 #define TXCFG_EMPTY		BIT(11)
+/*
+ * Max Tx DMA burst (TxDMAShift): 4 == 256 bytes, 7 == unlimited. The RTD129x
+ * embedded GMAC must use the vendor's 256-byte cap; an unlimited burst overruns
+ * the small on-chip Tx FIFO once a frame spans several bursts, so short packets
+ * pass but >~500-byte ones stall and trip the Tx watchdog ("transmit queue
+ * timed out"). Keep this at 4 to match the vendor r8169soc TX_DMA_BURST.
+ */
+#define TX_DMA_BURST		4
 	RxConfig		= 0x44,
 #define RX_FIFO_THRESH		(7 << 13)
 #define RX_EARLY_OFF		BIT(11)
@@ -856,7 +864,8 @@ static void rtl_set_rx_tx_desc_registers(struct rtl8169_private *tp)
 
 static void rtl_set_rx_tx_config_registers(struct rtl8169_private *tp)
 {
-	RTL_W32(tp, TxConfig, (7 << TxDMAShift) | (3 << TxInterFrameGapShift));
+	RTL_W32(tp, TxConfig,
+		(TX_DMA_BURST << TxDMAShift) | (3 << TxInterFrameGapShift));
 }
 
 static void rtl_set_rx_mode(struct net_device *dev)
