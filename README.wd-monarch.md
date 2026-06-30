@@ -1,8 +1,9 @@
-# Mainline Linux for the WD My Cloud Home (RTD1295 "Monarch")
+# Linux for the WD My Cloud Home (RTD1295 "Monarch")
 
-Mainline **Linux 6.18** for the Western Digital My Cloud Home single-bay NAS —
-the Realtek **RTD1295** ("Monarch") board — ported off WD's vendor
-`kernel-4.9.330` tree. It boots a stock **Debian arm64** rootfs from SATA or USB.
+Upstream **Linux 6.18** (a longterm release) for the Western Digital My Cloud
+Home single-bay NAS — the Realtek **RTD1295** ("Monarch") board — ported off
+WD's vendor `kernel-4.9.330` tree. It boots a stock **Debian arm64** rootfs from
+SATA or USB.
 
 > 🤖 **Vibe-coded with Claude Opus 4.8.** Just for fun. **Use at your own risk.**
 
@@ -12,7 +13,7 @@ the Realtek **RTD1295** ("Monarch") board — ported off WD's vendor
 
 The My Cloud Home ships a Realtek RTD1295 (4× Cortex-A53, 1 GiB DDR) running an
 ancient, never-to-be-updated 4.9 vendor kernel. This tree rebases the
-board-specific bits onto mainline's existing RTD1295 support and adds the
+board-specific bits onto upstream's existing RTD1295 support and adds the
 Monarch-specific pieces, so you can run a modern kernel and a real distro on it.
 
 It's a hobby port. Nothing here is official, supported, or blessed by WD,
