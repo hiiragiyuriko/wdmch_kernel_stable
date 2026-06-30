@@ -24,7 +24,7 @@ MODOUT=${MODOUT:-$KDIR/../modules}
 #   rtd1295_wd_defconfig         lean rescue / bring-up (all-builtin, no modules)
 #   rtd1295_wd_debian_defconfig  Debian rootfs kernel (Debian arm64 config + board)
 DEFCONFIG=${DEFCONFIG:-rtd1295_wd_defconfig}
-JOBS=${JOBS:-$(nproc)}
+JOBS=32
 DTB_PAD=$((1024 * 1024))
 
 mkdir -p "$OUT"
