@@ -11,7 +11,6 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
-#include <linux/delay.h>
 #include <linux/rtc.h>
 #include <linux/spinlock.h>
 
@@ -20,7 +19,6 @@
 #define RTD_RTCHR		0x08
 #define RTD_RTCDATE1		0x0c
 #define RTD_RTCDATE2		0x10
-#define RTD_RTCSTOP		0x24
 #define RTD_RTCACR		0x28
 #define RTD_RTCEN		0x2c
 #define RTD_RTCCR		0x30
@@ -155,74 +153,6 @@ static int rtd119x_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	return 0;
 }
 
-static u32 rtd119x_rtc_secs(struct rtd119x_rtc *data)
-{
-	return (readl_relaxed(data->base + RTD_RTCSEC) & RTD_RTCSEC_RTCSEC_MASK) >> 1;
-}
-
-/* True if the hardware seconds field advances within ~1.1 s. */
-static bool rtd119x_rtc_is_ticking(struct rtd119x_rtc *data)
-{
-	u32 sec = rtd119x_rtc_secs(data);
-
-	msleep(1100);
-	return rtd119x_rtc_secs(data) != sec;
-}
-
-/* set_enabled() no-ops when RTCEN is already 0x5a, so pulse it to re-arm. */
-static void rtd119x_rtc_reenable(struct device *dev)
-{
-	rtd119x_rtc_set_enabled(dev, false);
-	rtd119x_rtc_set_enabled(dev, true);
-}
-
-/*
- * Some RTD1295 boards (e.g. WD My Cloud Home) come up with the RTC register
- * file powered and readable - so hctosys and writes work - but the second
- * counter halted, which leaves hwclock spinning ("Timed out waiting for time
- * change"). The mainline and vendor drivers issue the same enable sequence, so
- * there is no missing register write to port; instead, detect the frozen
- * counter and try to restart it in increasing order of disruption: clear the
- * STOP register and re-pulse enable, then a reset pulse as a last resort (which
- * clears the time - NTP/hwclock will reset it). Logging each step lets a board
- * with a genuinely dead time-base be distinguished from one that just needed a
- * kick.
- */
-static void rtd119x_rtc_unfreeze(struct device *dev)
-{
-	struct rtd119x_rtc *data = dev_get_drvdata(dev);
-
-	dev_info(dev, "regs ACR=%#x EN=%#x CR=%#x STOP=%#x SEC=%#x\n",
-		 readl_relaxed(data->base + RTD_RTCACR),
-		 readl_relaxed(data->base + RTD_RTCEN),
-		 readl_relaxed(data->base + RTD_RTCCR),
-		 readl_relaxed(data->base + RTD_RTCSTOP),
-		 readl_relaxed(data->base + RTD_RTCSEC));
-
-	if (rtd119x_rtc_is_ticking(data)) {
-		dev_info(dev, "counter is ticking\n");
-		return;
-	}
-
-	dev_warn(dev, "counter frozen; clearing STOP and re-enabling\n");
-	writel_relaxed(0, data->base + RTD_RTCSTOP);
-	writel_relaxed(readl_relaxed(data->base + RTD_RTCACR) | RTD_RTCACR_RTCPWR,
-		       data->base + RTD_RTCACR);
-	rtd119x_rtc_reenable(dev);
-	if (rtd119x_rtc_is_ticking(data)) {
-		dev_info(dev, "counter started after clearing STOP / re-enable\n");
-		return;
-	}
-
-	dev_warn(dev, "still frozen; pulsing reset (RTC time will be cleared)\n");
-	rtd119x_rtc_reset(dev);
-	rtd119x_rtc_reenable(dev);
-	if (rtd119x_rtc_is_ticking(data))
-		dev_info(dev, "counter started after reset pulse\n");
-	else
-		dev_err(dev, "counter still frozen after reset; time-base appears dead\n");
-}
-
 static const struct rtc_class_ops rtd119x_rtc_ops = {
 	.read_time	= rtd119x_rtc_read_time,
 	.set_time	= rtd119x_rtc_set_time,
@@ -273,8 +203,6 @@ static int rtd119x_rtc_probe(struct platform_device *pdev)
 	}
 
 	rtd119x_rtc_set_enabled(&pdev->dev, true);
-
-	rtd119x_rtc_unfreeze(&pdev->dev);
 
 	data->rtcdev = devm_rtc_device_register(&pdev->dev, "rtc",
 						&rtd119x_rtc_ops, THIS_MODULE);
