@@ -18,6 +18,7 @@
 /dts-v1/;
 
 #include <dt-bindings/clock/rtd1295-clk.h>
+#include <dt-bindings/reset/realtek,rtd1295.h>
 #include <dt-bindings/regulator/gmt,g22xx.h>
 #include <dt-bindings/thermal/thermal.h>
 #include "rtd1295.dtsi"
@@ -633,6 +634,20 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
+
+		/*
+		 * Cold-init resources so USB works when U-Boot boots from SATA
+		 * without running "usb start": the USB clock gate, the port-0
+		 * controller/PHY resets (all in soft-reset-1), and the ISO
+		 * syscon holding the USB SRAM/power-gating registers.
+		 */
+		clocks = <&cc RTD1295_CRT_CLK_EN_USB>;
+		resets = <&reset1 RTD1295_RSTN_USB>,
+			 <&reset1 RTD1295_RSTN_USB_PHY0>,
+			 <&reset1 RTD1295_RSTN_USB3_PHY0_POW>,
+			 <&reset1 RTD1295_RSTN_USB3_P0_MDIO>;
+		reset-names = "usb", "u2phy0", "u3phy0", "u3mdio0";
+		realtek,iso = <&iso>;
 
 		dwc3@20000 {
 			compatible = "snps,dwc3";

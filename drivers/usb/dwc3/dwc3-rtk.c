@@ -7,11 +7,15 @@
  */
 
 #include <linux/cleanup.h>
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/mfd/syscon.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/regmap.h>
+#include <linux/reset.h>
 #include <linux/suspend.h>
 #include <linux/sys_soc.h>
 #include <linux/usb/otg.h>
@@ -50,17 +54,51 @@
 #define USB_DBUS_PWR_CTRL_REG 0x0
 #define DBUS_PWR_CTRL_EN BIT(0)
 
+/*
+ * RTD1295 USB power control lives in the ISO syscon (realtek,iso). These
+ * offsets/values are for port 0 (the DRD port) and mirror the vendor
+ * rtk_usb_rtd129x usb_iso_power_ctrl(power_on) sequence.
+ */
+#define ISO_USB_CTRL			0xfb0
+#define   ISO_USB_CTRL_P0_GATING	(BIT(0) | BIT(4) | BIT(6))
+#define   ISO_USB_CTRL_P0_ISOLATION	(BIT(8) | BIT(9))
+#define ISO_USB0_SRAM_PWR_CTRL		0xf80
+#define   ISO_USB0_SRAM_PWR_ON		0x00000f00
+
 struct dwc3_rtk {
 	struct device *dev;
 	void __iomem *regs;
 	size_t regs_size;
 	void __iomem *pm_base;
 
+	struct clk *clk;
+	struct reset_control *rsts;
+	struct regmap *iso;
+
 	struct dwc3 *dwc;
 
 	enum usb_role cur_role;
 	struct usb_role_switch *role_switch;
 };
+
+/*
+ * Bring the USB block up from a cold (firmware-untouched) state. When U-Boot
+ * boots from SATA without running "usb start" it leaves the USB clock gated,
+ * the controller/PHYs in reset and the dwc3 core SRAM unpowered, so the core
+ * register window reads back as "not a DesignWare USB3 DRD Core". The clock and
+ * resets are taken in probe(); here we run the ISO power-up (port 0): enable
+ * the power-gating, power the USB SRAM, then drop the isolation cell.
+ */
+static void dwc3_rtk_power_on_iso(struct dwc3_rtk *rtk)
+{
+	if (!rtk->iso)
+		return;
+
+	regmap_update_bits(rtk->iso, ISO_USB_CTRL, ISO_USB_CTRL_P0_GATING,
+			   ISO_USB_CTRL_P0_GATING);
+	regmap_write(rtk->iso, ISO_USB0_SRAM_PWR_CTRL, ISO_USB0_SRAM_PWR_ON);
+	regmap_update_bits(rtk->iso, ISO_USB_CTRL, ISO_USB_CTRL_P0_ISOLATION, 0);
+}
 
 static void switch_usb2_role(struct dwc3_rtk *rtk, enum usb_role role)
 {
@@ -380,6 +418,29 @@ static int dwc3_rtk_probe(struct platform_device *pdev)
 		if (IS_ERR(rtk->pm_base))
 			return PTR_ERR(rtk->pm_base);
 	}
+
+	/*
+	 * Optional: bring USB up from cold so it does not depend on U-Boot
+	 * having run "usb start". All three are absent on platforms that rely
+	 * on firmware, in which case these are no-ops.
+	 */
+	rtk->clk = devm_clk_get_optional_enabled(dev, NULL);
+	if (IS_ERR(rtk->clk))
+		return dev_err_probe(dev, PTR_ERR(rtk->clk),
+				     "failed to enable USB clock\n");
+
+	rtk->iso = syscon_regmap_lookup_by_phandle_optional(dev->of_node,
+							    "realtek,iso");
+	if (IS_ERR(rtk->iso))
+		return dev_err_probe(dev, PTR_ERR(rtk->iso),
+				     "failed to get realtek,iso syscon\n");
+	dwc3_rtk_power_on_iso(rtk);
+
+	rtk->rsts = devm_reset_control_array_get_optional_exclusive(dev);
+	if (IS_ERR(rtk->rsts))
+		return dev_err_probe(dev, PTR_ERR(rtk->rsts),
+				     "failed to get USB resets\n");
+	reset_control_deassert(rtk->rsts);
 
 	return dwc3_rtk_probe_dwc3_core(rtk);
 }
