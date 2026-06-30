@@ -38,8 +38,8 @@ Realtek, Debian, or anyone else.
 | SPI-NOR boot flash (MTD) | ✅ |
 | RTC | ⚠️ keeps no time in hardware — see quirks |
 
-**Not ported** (on purpose): GPU 3D / video engines / HDMI / audio (it's a NAS),
-PCIe (disabled on this board), eMMC (holds the original WD OS).
+**Not ported** (on purpose): GPU 3D / video engines / HDMI / audio (it's a NAS).
+**Not present on this board:** PCIe and eMMC.
 
 ## Building
 
