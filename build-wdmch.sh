@@ -20,16 +20,26 @@ export CROSS_COMPILE=aarch64-linux-gnu-
 KDIR=$(cd "$(dirname "$0")" && pwd)
 OUT=${OUT:-$KDIR/../out}
 MODOUT=${MODOUT:-$KDIR/../modules}
+# DEFCONFIG selects the kernel flavour:
+#   rtd1295_wd_defconfig         lean rescue / bring-up (all-builtin, no modules)
+#   rtd1295_wd_debian_defconfig  Debian rootfs kernel (Debian arm64 config + board)
+DEFCONFIG=${DEFCONFIG:-rtd1295_wd_defconfig}
+JOBS=${JOBS:-$(nproc)}
 DTB_PAD=$((1024 * 1024))
 
 mkdir -p "$OUT"
 cd "$KDIR"
 
-echo "==> Configuring"
-make rtd1295_wd_defconfig
+echo "==> Configuring ($DEFCONFIG)"
+make "$DEFCONFIG"
 
-echo "==> Building Image + dtbs + modules"
-make -j"$(nproc)" Image dtbs modules DTC_FLAGS="-p 8192"
+echo "==> Building Image + the board dtb + modules"
+# Build ONLY this board's device tree, never the whole arm64 dtbs tree. The
+# blanket "dtbs" target compiles every vendor's DTBs (qcom/tegra/freescale/...)
+# regardless of platform selection, which is both wasteful and fragile (some of
+# those need DT-overlay symbol tables we don't pass). We only flash this one dtb.
+# kbuild's %.dtb rule prepends arch/$ARCH/boot/dts/, so the target is relative.
+make -j"$JOBS" Image modules realtek/rtd1295-wd-monarch.dtb DTC_FLAGS="-p 8192"
 
 echo "==> Packaging sata.uImage (Image + 512K pad)"
 cp arch/arm64/boot/Image "$OUT/sata.uImage"
@@ -42,7 +52,7 @@ truncate -s "$DTB_PAD" "$OUT/rescue.sata.dtb"
 echo "==> Installing modules to $MODOUT"
 rm -rf "$MODOUT/lib/modules"
 mkdir -p "$MODOUT"
-make -j"$(nproc)" INSTALL_MOD_PATH="$MODOUT" INSTALL_MOD_STRIP=1 modules_install
+make -j"$JOBS" INSTALL_MOD_PATH="$MODOUT" INSTALL_MOD_STRIP=1 modules_install
 
 echo "==> Done."
 echo "Artifacts in $OUT:"
