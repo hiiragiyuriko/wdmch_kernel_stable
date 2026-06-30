@@ -547,8 +547,17 @@
 
 				gpu_supp: dc3 {
 					regulator-name = "gpudvs";
+					/*
+					 * The GPU island is held powered-off via
+					 * genpd, so nothing scales this rail.
+					 * Pin it to the 0.8 V minimum (instead of
+					 * the firmware default 1.0 V) to shave the
+					 * isolated island's leakage. Keep it
+					 * always-on: cutting dc3 outright halts the
+					 * SoC.
+					 */
 					regulator-min-microvolt = <800000>;
-					regulator-max-microvolt = <1187500>;
+					regulator-max-microvolt = <800000>;
 					regulator-boot-on;
 					regulator-always-on;
 					regulator-initial-mode = <G22XX_DC_MODE_AUTO>;
